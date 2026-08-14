@@ -33,7 +33,7 @@ const navItems = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { mode, signOut, user } = useApp();
+  const { mode, signOut, exitOfflineMode, user } = useApp();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isOnline = mode === 'online';
@@ -98,6 +98,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <LogOut className="w-5 h-5" />
             Sign Out
+          </button>
+        )}
+        {!isOnline && (
+          <button onClick={exitOfflineMode} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 w-full transition-all">
+            <LogOut className="w-5 h-5" /> Exit Offline Mode
           </button>
         )}
       </div>

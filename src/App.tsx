@@ -25,7 +25,7 @@ function AppRoutes() {
     );
   }
 
-  if (!mode) return <Landing />;
+  if (mode === 'unselected') return <Landing />;
 
   return (
     <AppShell>

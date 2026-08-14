@@ -11,13 +11,14 @@ import { downloadFile } from '@/utils/csv';
 const APP_VERSION = '1.0.2';
 
 export function Settings() {
-  const { repo, mode, signOut } = useApp();
+  const { repo, mode, signOut, exitOfflineMode } = useApp();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [classes, setClasses] = useState<ClassRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [clearOpen, setClearOpen] = useState(false);
+  const [exitOfflineOpen, setExitOfflineOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -193,6 +194,7 @@ export function Settings() {
                 <button onClick={() => fileRef.current?.click()} className="btn-secondary"><Upload className="w-4 h-4" /> Import Backup</button>
                 <input ref={fileRef} type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
                 <button onClick={() => setClearOpen(true)} className="btn-danger"><Trash2 className="w-4 h-4" /> Clear All Data</button>
+                <button onClick={() => setExitOfflineOpen(true)} className="btn-secondary"><LogOut className="w-4 h-4" /> Exit Offline Mode</button>
               </>
             )}
             {mode === 'online' && (
@@ -219,6 +221,10 @@ export function Settings() {
       <ConfirmDialog open={clearOpen} onClose={() => setClearOpen(false)} onConfirm={handleClear}
         title="Clear All Data" message="This will permanently delete ALL classes, students, exams, marks, assignments, and grace marks from this device. This cannot be undone."
         confirmLabel="Delete Everything" danger strong
+      />
+      <ConfirmDialog open={exitOfflineOpen} onClose={() => setExitOfflineOpen(false)} onConfirm={exitOfflineMode}
+        title="Exit Offline Mode?" message="Your offline data will remain stored on this device. It will not be deleted or uploaded."
+        confirmLabel="Exit Offline Mode"
       />
 
       <Modal open={aboutOpen} onClose={() => setAboutOpen(false)} title="About PWA Installation">
