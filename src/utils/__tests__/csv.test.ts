@@ -5,6 +5,8 @@ import {
   previewRollNumberImport,
   previewMarksImport,
   studentsToCsv,
+  blankStudentTemplate,
+  previewStudentCsvImport,
 } from '@/utils/csv';
 import type { Student } from '@/types';
 
@@ -148,5 +150,33 @@ describe('studentsToCsv', () => {
     expect(csv).toContain('uuid-1');
     expect(csv).toContain('Alice');
     expect(csv).toContain('ADM001');
+  });
+});
+
+describe('class-aware student import', () => {
+  const classes = [{ id: 'cls-1', name: 'Plus Two', division: 'A', academicYear: '2026-27', createdAt: '', updatedAt: '' }];
+  it('plans a new class and student with no existing classes', () => {
+    const rows = parseCsv('class_name,division,academic_year,roll_number,name\nPlus Two,A,2026-27,1,Alice');
+    const plan = previewStudentCsvImport(rows, [], []);
+    expect(plan.classes[0].status).toBe('create');
+    expect(plan.students[0].status).toBe('create');
+  });
+  it('reuses a uniquely matching class and updates by stable student id', () => {
+    const rows = parseCsv('student_id,class_id,class_name,division,academic_year,roll_number,name,admission_number\nuuid-1,cls-1,Plus Two,A,2026-27,5,Alice,ADM001');
+    const plan = previewStudentCsvImport(rows, classes, mockStudents);
+    expect(plan.classes[0].status).toBe('existing');
+    expect(plan.students[0].status).toBe('update');
+  });
+  it('includes class headings in the blank template', () => {
+    expect(blankStudentTemplate()).toContain('class_name');
+    expect(blankStudentTemplate()).toContain('academic_year');
+  });
+  it('accepts the app template after a student row is completed', () => {
+    const rows = parseCsv(`\uFEFF${blankStudentTemplate()}`);
+    rows[0].roll_number = '1';
+    rows[0].name = 'Test Student';
+    const plan = previewStudentCsvImport(rows, [], []);
+    expect(plan.invalid).toHaveLength(0);
+    expect(plan.students).toEqual(expect.arrayContaining([expect.objectContaining({ rollNumber: '1', name: 'Test Student' })]));
   });
 });

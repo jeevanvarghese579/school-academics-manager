@@ -1,17 +1,17 @@
 import Papa from 'papaparse';
-import type { Student } from '@/types';
+import type { ClassRoom, Student } from '@/types';
 
 export interface CsvRow {
   [key: string]: string;
 }
 
 export function parseCsv(text: string): CsvRow[] {
-  const result = Papa.parse<CsvRow>(text, {
+  const result = Papa.parse<CsvRow>(text.replace(/^\uFEFF/, ''), {
     header: true,
     skipEmptyLines: true,
     transformHeader: (h: string) => h.trim().toLowerCase(),
   });
-  return result.data;
+  return result.data.filter((row) => Object.values(row).some((value) => String(value ?? '').trim() !== ''));
 }
 
 export function toCsv(rows: Record<string, string | number | null | undefined>[]): string {
@@ -126,10 +126,39 @@ export function selectedStudentsToCsv(students: Student[]): string {
 
 export function blankStudentTemplate(): string {
   return toCsv([
-    { student_id: '', roll_number: '', name: '', admission_number: '' },
-    { student_id: '', roll_number: '1', name: 'Student Name', admission_number: '' },
+    { student_id: '', class_id: '', class_name: '', division: '', academic_year: '', roll_number: '', name: '', admission_number: '' },
+    { student_id: '', class_id: '', class_name: 'Plus Two', division: 'A', academic_year: '2026-27', roll_number: '1', name: 'Student Name', admission_number: '' },
   ]);
 }
+
+export interface ClassImportPlan { key: string; classId?: string; name: string; division: string; academicYear: string; status: 'existing' | 'create' | 'ambiguous'; }
+export interface StudentImportPlan { studentId?: string; classKey: string; rollNumber: string; name: string; admissionNumber: string; status: 'create' | 'update' | 'unchanged'; existing?: Student; }
+export interface StudentCsvImportPreview { classes: ClassImportPlan[]; students: StudentImportPlan[]; invalid: { row: CsvRow; reason: string }[]; duplicates: { row: CsvRow; reason: string }[]; }
+export interface NormalizedStudentCsvRow { studentId?: string; classId?: string; className?: string; division?: string; academicYear?: string; rollNumber: string; name: string; admissionNumber?: string; }
+
+function value(row: CsvRow, key: string): string { return String(row[key] ?? '').trim(); }
+export function normalizeStudentCsvRow(row: CsvRow): NormalizedStudentCsvRow {
+  const studentId = value(row, 'student_id'); const classId = value(row, 'class_id'); const className = value(row, 'class_name'); const division = value(row, 'division'); const academicYear = value(row, 'academic_year'); const admissionNumber = value(row, 'admission_number');
+  return { studentId: studentId || undefined, classId: classId || undefined, className: className || undefined, division: division || undefined, academicYear: academicYear || undefined, rollNumber: value(row, 'roll_number'), name: value(row, 'name'), admissionNumber: admissionNumber || undefined };
+}
+
+/** Shared, storage-agnostic student/class CSV validation and import plan. */
+export function previewStudentCsvImport(rows: CsvRow[], existingClasses: ClassRoom[], existingStudents: Student[]): StudentCsvImportPreview {
+  const classes = new Map<string, ClassImportPlan>(); const students: StudentImportPlan[] = []; const invalid: StudentCsvImportPreview['invalid']=[]; const duplicates: StudentCsvImportPreview['duplicates']=[]; const seen = new Set<string>(); const byStudentId = new Map(existingStudents.map(s=>[s.id,s]));
+  for (const row of rows) { const normalized=normalizeStudentCsvRow(row); const {studentId,classId,name,rollNumber,admissionNumber='',className='',division='',academicYear=''}=normalized;
+    if(!name||!rollNumber){invalid.push({row,reason:'Student name and roll number are required'});continue;}
+    let matches=classId?existingClasses.filter(c=>c.id===classId):existingClasses.filter(c=>c.name===className&&c.division===division&&c.academicYear===academicYear);
+    if(!classId&&!className){invalid.push({row,reason:'class_id or class_name is required when importing without a selected class'});continue;}
+    const key=classId||`${className}|${division}|${academicYear}`; let plan=classes.get(key);
+    if(!plan){plan={key,classId:matches.length===1?matches[0].id:undefined,name:className||matches[0]?.name||'',division:division||matches[0]?.division||'',academicYear:academicYear||matches[0]?.academicYear||'',status:matches.length===1?'existing':matches.length>1?'ambiguous':'create'};classes.set(key,plan);}
+    if(plan.status==='ambiguous'){invalid.push({row,reason:`Class match is ambiguous: ${className} ${division} ${academicYear}`});continue;}
+    const duplicateKey=studentId||`${key}|${rollNumber}|${name}`;if(seen.has(duplicateKey)){duplicates.push({row,reason:'Duplicate student row in file'});continue;}seen.add(duplicateKey);
+    const existing=studentId?byStudentId.get(studentId):undefined; const same=!!existing&&existing.rollNumber===rollNumber&&existing.name===name&&(existing.admissionNumber||'')===admissionNumber&&existing.classId===plan.classId;
+    students.push({studentId:existing?.id,classKey:key,rollNumber,name,admissionNumber,status:existing?(same?'unchanged':'update'):'create',existing});
+  } return {classes:[...classes.values()],students,invalid,duplicates};
+}
+
+export function studentsWithClassToCsv(students: Student[], cls: ClassRoom): string { return toCsv(students.map(s=>({student_id:s.id,class_id:cls.id,class_name:cls.name,division:cls.division,academic_year:cls.academicYear,roll_number:s.rollNumber,name:s.name,admission_number:s.admissionNumber??''}))); }
 
 // Roll number only import
 export interface RollNumberImportRow {
