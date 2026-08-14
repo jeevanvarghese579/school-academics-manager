@@ -1,0 +1,24 @@
+{
+  "name": "SAM — Students Academics Manager",
+  "short_name": "SAM",
+  "description": "Manage classes, students, exams, marks, assignments, grace marks, and academic reports.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f0f7f8",
+  "theme_color": "#317180",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
