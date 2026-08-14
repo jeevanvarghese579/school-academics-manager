@@ -10,6 +10,7 @@ import type {
   ExamMark,
   GraceMark,
   PlusOneMark,
+  CombinedAnalysis,
   Student,
   UserSettings,
 } from '@/types';
@@ -123,6 +124,10 @@ function mapGraceMark(row: any): GraceMark {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function mapCombinedAnalysis(row: any): CombinedAnalysis {
+  return { id: row.id, classId: row.class_id, name: row.name, examIds: row.exam_ids ?? [], createdAt: row.created_at, updatedAt: row.updated_at };
 }
 
 export class SupabaseRepository implements DataRepository {
@@ -603,6 +608,32 @@ export class SupabaseRepository implements DataRepository {
     if (error) throw error;
   }
 
+  async getCombinedAnalyses(classId?: string): Promise<CombinedAnalysis[]> {
+    let query = this.client.from('sam_combined_analyses').select('*');
+    if (classId) query = query.eq('class_id', classId);
+    const { data, error } = await query.order('created_at');
+    if (error) throw error;
+    return (data || []).map(mapCombinedAnalysis);
+  }
+
+  async createCombinedAnalysis(analysis: Omit<CombinedAnalysis, 'id' | 'createdAt' | 'updatedAt'>): Promise<CombinedAnalysis> {
+    if (analysis.examIds.length < 2) throw new Error('A combined analysis requires at least two exams');
+    const { data, error } = await this.client.from('sam_combined_analyses').insert({ class_id: analysis.classId, name: analysis.name, exam_ids: analysis.examIds }).select().single();
+    if (error) throw error;
+    return mapCombinedAnalysis(data);
+  }
+
+  async updateCombinedAnalysis(analysis: CombinedAnalysis): Promise<void> {
+    if (analysis.examIds.length < 2) throw new Error('A combined analysis requires at least two exams');
+    const { error } = await this.client.from('sam_combined_analyses').update({ name: analysis.name, exam_ids: analysis.examIds, updated_at: now() }).eq('id', analysis.id);
+    if (error) throw error;
+  }
+
+  async deleteCombinedAnalysis(id: string): Promise<void> {
+    const { error } = await this.client.from('sam_combined_analyses').delete().eq('id', id);
+    if (error) throw error;
+  }
+
   // Backup
   async exportBackup(): Promise<BackupData> {
     const [settings, classes, students, exams, examMarks, plusOneMarks, assignments, assignmentStatuses, graceMarks] =
@@ -618,7 +649,7 @@ export class SupabaseRepository implements DataRepository {
         this.getGraceMarks(),
       ]);
     return {
-      version: '1.0.0',
+      version: '1.0.2',
       exportedAt: now(),
       settings,
       classes,

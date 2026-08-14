@@ -7,6 +7,7 @@ import type {
   ExamMark,
   GraceMark,
   PlusOneMark,
+  CombinedAnalysis,
   Student,
   UserSettings,
 } from '@/types';
@@ -21,6 +22,7 @@ export class SamDexie extends Dexie {
   assignments!: Table<Assignment, string>;
   assignmentStatuses!: Table<AssignmentStatus, string>;
   graceMarks!: Table<GraceMark, string>;
+  combinedAnalyses!: Table<CombinedAnalysis, string>;
 
   constructor() {
     super('sam_offline_db');
@@ -34,6 +36,13 @@ export class SamDexie extends Dexie {
       assignments: 'id, classId, title, dueDate',
       assignmentStatuses: 'id, assignmentId, studentId, classId',
       graceMarks: 'id, studentId, classId, category, date',
+    });
+    this.version(2).stores({
+      settings: 'id', classes: 'id, name, academicYear', students: 'id, classId, rollNumber, name',
+      exams: 'id, classId, name, date, type', examMarks: 'id, examId, studentId, classId',
+      plusOneMarks: 'id, examId, studentId, classId', assignments: 'id, classId, title, dueDate',
+      assignmentStatuses: 'id, assignmentId, studentId, classId', graceMarks: 'id, studentId, classId, category, date',
+      combinedAnalyses: 'id, classId, name, updatedAt',
     });
   }
 }

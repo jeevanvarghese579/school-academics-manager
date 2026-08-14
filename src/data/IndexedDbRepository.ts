@@ -10,9 +10,11 @@ import type {
   ExamMark,
   GraceMark,
   PlusOneMark,
+  CombinedAnalysis,
   Student,
   UserSettings,
 } from '@/types';
+import { DEFAULT_SETTINGS } from '@/types';
 
 function now(): string {
   return new Date().toISOString();
@@ -27,7 +29,7 @@ export class IndexedDbRepository implements DataRepository {
 
   async getSettings(): Promise<UserSettings | null> {
     const all = await this.db.settings.toArray();
-    return all[0] ?? null;
+    return all[0] ? { ...DEFAULT_SETTINGS, ...all[0] } : null;
   }
 
   async saveSettings(settings: UserSettings): Promise<void> {
@@ -55,7 +57,7 @@ export class IndexedDbRepository implements DataRepository {
   async deleteClass(id: string): Promise<void> {
     await this.db.transaction(
       'rw',
-      [this.db.classes, this.db.students, this.db.exams, this.db.examMarks, this.db.plusOneMarks, this.db.assignments, this.db.assignmentStatuses, this.db.graceMarks],
+      [this.db.classes, this.db.students, this.db.exams, this.db.examMarks, this.db.plusOneMarks, this.db.assignments, this.db.assignmentStatuses, this.db.graceMarks, this.db.combinedAnalyses],
       async () => {
         const students = await this.db.students.where('classId').equals(id).toArray();
         const studentIds = students.map((s) => s.id);
@@ -72,6 +74,7 @@ export class IndexedDbRepository implements DataRepository {
           await this.db.plusOneMarks.where('examId').equals(eid).delete();
         }
         await this.db.exams.where('classId').equals(id).delete();
+        await this.db.combinedAnalyses.where('classId').equals(id).delete();
         await this.db.students.where('classId').equals(id).delete();
         await this.db.classes.delete(id);
         void studentIds; void assignmentIds;
@@ -300,8 +303,26 @@ export class IndexedDbRepository implements DataRepository {
     await this.db.graceMarks.delete(id);
   }
 
+  async getCombinedAnalyses(classId?: string): Promise<CombinedAnalysis[]> {
+    return classId ? this.db.combinedAnalyses.where('classId').equals(classId).toArray() : this.db.combinedAnalyses.toArray();
+  }
+
+  async createCombinedAnalysis(analysis: Omit<CombinedAnalysis, 'id' | 'createdAt' | 'updatedAt'>): Promise<CombinedAnalysis> {
+    if (analysis.examIds.length < 2) throw new Error('A combined analysis requires at least two exams');
+    const entity: CombinedAnalysis = { ...analysis, id: uuidv4(), createdAt: now(), updatedAt: now() };
+    await this.db.combinedAnalyses.add(entity);
+    return entity;
+  }
+
+  async updateCombinedAnalysis(analysis: CombinedAnalysis): Promise<void> {
+    if (analysis.examIds.length < 2) throw new Error('A combined analysis requires at least two exams');
+    await this.db.combinedAnalyses.put({ ...analysis, updatedAt: now() });
+  }
+
+  async deleteCombinedAnalysis(id: string): Promise<void> { await this.db.combinedAnalyses.delete(id); }
+
   async exportBackup(): Promise<BackupData> {
-    const [settings, classes, students, exams, examMarks, plusOneMarks, assignments, assignmentStatuses, graceMarks] =
+    const [settings, classes, students, exams, examMarks, plusOneMarks, assignments, assignmentStatuses, graceMarks, combinedAnalyses] =
       await Promise.all([
         this.db.settings.toArray(),
         this.db.classes.toArray(),
@@ -312,9 +333,10 @@ export class IndexedDbRepository implements DataRepository {
         this.db.assignments.toArray(),
         this.db.assignmentStatuses.toArray(),
         this.db.graceMarks.toArray(),
+        this.db.combinedAnalyses.toArray(),
       ]);
     return {
-      version: '1.0.0',
+      version: '1.0.2',
       exportedAt: now(),
       settings: settings[0] ?? null,
       classes,
@@ -325,6 +347,7 @@ export class IndexedDbRepository implements DataRepository {
       assignments,
       assignmentStatuses,
       graceMarks,
+      combinedAnalyses,
     };
   }
 
@@ -341,6 +364,7 @@ export class IndexedDbRepository implements DataRepository {
         this.db.assignments,
         this.db.assignmentStatuses,
         this.db.graceMarks,
+        this.db.combinedAnalyses,
       ],
       async () => {
         await this.db.settings.clear();
@@ -352,6 +376,7 @@ export class IndexedDbRepository implements DataRepository {
         await this.db.assignments.clear();
         await this.db.assignmentStatuses.clear();
         await this.db.graceMarks.clear();
+        await this.db.combinedAnalyses.clear();
         if (data.settings) await this.db.settings.put(data.settings);
         await this.db.classes.bulkPut(data.classes || []);
         await this.db.students.bulkPut(data.students || []);
@@ -361,6 +386,7 @@ export class IndexedDbRepository implements DataRepository {
         await this.db.assignments.bulkPut(data.assignments || []);
         await this.db.assignmentStatuses.bulkPut(data.assignmentStatuses || []);
         await this.db.graceMarks.bulkPut(data.graceMarks || []);
+        await this.db.combinedAnalyses.bulkPut(data.combinedAnalyses || []);
       },
     );
   }
@@ -378,6 +404,7 @@ export class IndexedDbRepository implements DataRepository {
         this.db.assignments,
         this.db.assignmentStatuses,
         this.db.graceMarks,
+        this.db.combinedAnalyses,
       ],
       async () => {
         await this.db.settings.clear();
@@ -389,6 +416,7 @@ export class IndexedDbRepository implements DataRepository {
         await this.db.assignments.clear();
         await this.db.assignmentStatuses.clear();
         await this.db.graceMarks.clear();
+        await this.db.combinedAnalyses.clear();
       },
     );
   }

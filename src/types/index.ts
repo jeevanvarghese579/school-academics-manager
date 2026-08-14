@@ -20,6 +20,8 @@ export interface UserSettings extends BaseEntity {
   plusOneMaxTotal: number;
   requiredTEPercent: number;
   requiredTotalPercent: number;
+  /** Percentage required for the configured Plus One double-pass result. */
+  doublePassRequiredPercent: number;
   doublePassEnabled: boolean;
   aPlusThreshold: number;
   allowMarksOverMax: boolean;
@@ -95,6 +97,12 @@ export interface GraceMark extends BaseEntity {
   notes?: string;
 }
 
+export interface CombinedAnalysis extends BaseEntity {
+  classId: ID;
+  name: string;
+  examIds: ID[];
+}
+
 export interface BackupData {
   version: string;
   exportedAt: string;
@@ -107,6 +115,7 @@ export interface BackupData {
   assignments: Assignment[];
   assignmentStatuses: AssignmentStatus[];
   graceMarks: GraceMark[];
+  combinedAnalyses?: CombinedAnalysis[];
 }
 
 export const DEFAULT_SETTINGS: Omit<UserSettings, 'id' | 'createdAt' | 'updatedAt'> = {
@@ -120,6 +129,7 @@ export const DEFAULT_SETTINGS: Omit<UserSettings, 'id' | 'createdAt' | 'updatedA
   plusOneMaxTotal: 100,
   requiredTEPercent: 30,
   requiredTotalPercent: 30,
+  doublePassRequiredPercent: 30,
   doublePassEnabled: true,
   aPlusThreshold: 90,
   allowMarksOverMax: false,

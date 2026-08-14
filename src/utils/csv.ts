@@ -284,8 +284,8 @@ export function plusOneMarksToCsv(
       student_id: s.id,
       roll_number: s.rollNumber,
       name: s.name,
-      te_marks: m?.te ?? '',
       ce_marks: m?.ce ?? '',
+      te_marks: m?.te ?? '',
     };
   });
   return toCsv(rows);
@@ -296,16 +296,16 @@ export function blankPlusOneMarksTemplate(students: Student[]): string {
     student_id: s.id,
     roll_number: s.rollNumber,
     name: s.name,
-    te_marks: '',
     ce_marks: '',
+    te_marks: '',
   }));
   return toCsv(rows);
 }
 
 export interface PlusOneMarksImportPreview {
-  toUpdate: { student_id: string; te_marks: number | null; ce_marks: number | null }[];
+  toUpdate: { student_id: string; ce_marks: number | null; te_marks: number | null }[];
   invalid: { row: CsvRow; reason: string }[];
-  unchanged: { student_id: string; te_marks: number | null; ce_marks: number | null }[];
+  unchanged: { student_id: string; ce_marks: number | null; te_marks: number | null }[];
 }
 
 export function previewPlusOneMarksImport(
@@ -357,9 +357,9 @@ export function previewPlusOneMarksImport(
 
     const current = existingMarks.get(studentId);
     if (current && current.te === te && current.ce === ce) {
-      unchanged.push({ student_id: studentId, te_marks: te, ce_marks: ce });
+      unchanged.push({ student_id: studentId, ce_marks: ce, te_marks: te });
     } else {
-      toUpdate.push({ student_id: studentId, te_marks: te, ce_marks: ce });
+      toUpdate.push({ student_id: studentId, ce_marks: ce, te_marks: te });
     }
   }
 

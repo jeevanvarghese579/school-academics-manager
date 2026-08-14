@@ -7,6 +7,7 @@ import type {
   ExamMark,
   GraceMark,
   PlusOneMark,
+  CombinedAnalysis,
   Student,
   UserSettings,
 } from '@/types';
@@ -71,6 +72,12 @@ export interface DataRepository {
   createGraceMark(g: Omit<GraceMark, 'id' | 'createdAt' | 'updatedAt'>): Promise<GraceMark>;
   updateGraceMark(g: GraceMark): Promise<void>;
   deleteGraceMark(id: string): Promise<void>;
+
+  // Combined analyses (definitions only; results derive from the referenced exams)
+  getCombinedAnalyses(classId?: string): Promise<CombinedAnalysis[]>;
+  createCombinedAnalysis(analysis: Omit<CombinedAnalysis, 'id' | 'createdAt' | 'updatedAt'>): Promise<CombinedAnalysis>;
+  updateCombinedAnalysis(analysis: CombinedAnalysis): Promise<void>;
+  deleteCombinedAnalysis(id: string): Promise<void>;
 
   // Backup
   exportBackup(): Promise<BackupData>;

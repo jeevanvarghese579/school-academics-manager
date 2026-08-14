@@ -54,13 +54,14 @@ export function calcPlusOneResult(
   settings: Pick<
     UserSettings,
     'plusOneMaxTE' | 'plusOneMaxCE' | 'plusOneMaxTotal' | 'requiredTEPercent' | 'requiredTotalPercent' | 'doublePassEnabled' | 'aPlusThreshold'
-  >,
+  > & Partial<Pick<UserSettings, 'doublePassRequiredPercent'>>,
 ): PlusOneResult {
   const maxTE = settings.plusOneMaxTE;
   const maxCE = settings.plusOneMaxCE;
   const maxTotal = settings.plusOneMaxTotal || maxTE + maxCE;
   const requiredTE = (settings.requiredTEPercent / 100) * maxTE;
   const requiredTotal = (settings.requiredTotalPercent / 100) * maxTotal;
+  const requiredDoublePassTotal = ((settings.doublePassRequiredPercent ?? settings.requiredTotalPercent) / 100) * maxTotal;
   const aPlusThreshold = settings.aPlusThreshold;
 
   const isIncomplete = teMarks === null || ceMarks === null;
@@ -70,7 +71,7 @@ export function calcPlusOneResult(
   const percentage = isIncomplete || maxTotal <= 0 ? null : (total / maxTotal) * 100;
 
   const passed = !isIncomplete && te >= requiredTE && total >= requiredTotal;
-  const doublePass = settings.doublePassEnabled && passed && te >= requiredTE && total >= requiredTotal;
+  const doublePass = settings.doublePassEnabled && !isIncomplete && total >= requiredDoublePassTotal;
 
   // Marks required for double pass
   let marksRequiredForDoublePass: number | null = null;
@@ -82,9 +83,7 @@ export function calcPlusOneResult(
       marksRequiredForDoublePass = 0;
     } else {
       // Need to meet both TE requirement and total requirement
-      const teDeficit = Math.max(0, requiredTE - te);
-      const totalDeficit = Math.max(0, requiredTotal - total);
-      const required = Math.max(teDeficit, totalDeficit);
+      const required = Math.max(0, requiredDoublePassTotal - total);
       if (required > remainingMax && remainingMax >= 0) {
         isImpossible = true;
         marksRequiredForDoublePass = required;
