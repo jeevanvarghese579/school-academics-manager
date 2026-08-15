@@ -39,6 +39,7 @@ export interface PlusOneResult {
   ceMarks: number | null;
   total: number | null;
   percentage: number | null;
+  tePercentage: number | null;
   passed: boolean;
   doublePass: boolean;
   marksRequiredForDoublePass: number | null;
@@ -69,6 +70,7 @@ export function calcPlusOneResult(
   const ce = ceMarks ?? 0;
   const total = isIncomplete ? 0 : te + ce;
   const percentage = isIncomplete || maxTotal <= 0 ? null : (total / maxTotal) * 100;
+  const tePercentage = teMarks === null || maxTE <= 0 ? null : (teMarks / maxTE) * 100;
 
   const passed = !isIncomplete && te >= requiredTE && total >= requiredTotal;
   const doublePass = settings.doublePassEnabled && !isIncomplete && total >= requiredDoublePassTotal;
@@ -117,6 +119,7 @@ export function calcPlusOneResult(
     ceMarks,
     total: isIncomplete ? null : total,
     percentage,
+    tePercentage,
     passed,
     doublePass,
     marksRequiredForDoublePass,

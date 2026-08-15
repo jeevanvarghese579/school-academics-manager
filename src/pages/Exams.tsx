@@ -7,6 +7,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import type { ClassRoom, Exam, ExamType } from '@/types';
+import { sortExamsChronologically } from '@/utils/exams';
 
 export function Exams() {
   const { repo } = useApp();
@@ -74,11 +75,11 @@ export function Exams() {
     setModalOpen(true);
   };
 
-  const filtered = exams.filter((e) => {
+  const filtered = sortExamsChronologically(exams.filter((e) => {
     if (filterClass !== 'all' && e.classId !== filterClass) return false;
     const q = search.toLowerCase();
     return e.name.toLowerCase().includes(q) || (e.subject || '').toLowerCase().includes(q);
-  });
+  }));
 
   if (loading) return <div className="space-y-4"><div className="skeleton h-8 w-32" /><div className="skeleton h-64" /></div>;
 

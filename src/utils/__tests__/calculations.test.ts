@@ -86,6 +86,7 @@ describe('calcPlusOneResult', () => {
     const r = calcPlusOneResult(60, 15, mockSettings);
     expect(r.total).toBe(75);
     expect(r.percentage).toBe(75);
+    expect(r.tePercentage).toBe(75);
   });
 
   it('marks as incomplete when TE or CE is null', () => {
@@ -165,6 +166,13 @@ describe('calcPlusOneResult', () => {
     // total=70, need 90 for A+, deficit=20
     expect(r.aPlusAchieved).toBe(false);
     expect(r.marksRequiredForAPlus).toBe(20);
+  });
+
+  it('keeps required-mark values incomplete until both Plus One marks exist', () => {
+    const r = calcPlusOneResult(60, null, mockSettings);
+    expect(r.tePercentage).toBe(75);
+    expect(r.marksRequiredForDoublePass).toBeNull();
+    expect(r.marksRequiredForAPlus).toBeNull();
   });
 
   it('handles double pass disabled', () => {
