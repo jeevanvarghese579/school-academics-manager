@@ -351,7 +351,7 @@ export class IndexedDbRepository implements DataRepository {
     };
   }
 
-  async importBackup(data: BackupData): Promise<void> {
+  async importBackup(data: BackupData, onProgress?: (completed: number, total: number) => void): Promise<void> {
     await this.db.transaction(
       'rw',
       [
@@ -387,6 +387,7 @@ export class IndexedDbRepository implements DataRepository {
         await this.db.assignmentStatuses.bulkPut(data.assignmentStatuses || []);
         await this.db.graceMarks.bulkPut(data.graceMarks || []);
         await this.db.combinedAnalyses.bulkPut(data.combinedAnalyses || []);
+        onProgress?.(1, 1);
       },
     );
   }

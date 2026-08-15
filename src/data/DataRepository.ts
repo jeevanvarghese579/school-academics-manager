@@ -81,6 +81,6 @@ export interface DataRepository {
 
   // Backup
   exportBackup(): Promise<BackupData>;
-  importBackup(data: BackupData): Promise<void>;
+  importBackup(data: BackupData, onProgress?: (completed: number, total: number) => void): Promise<void>;
   clearAllData(): Promise<void>;
 }

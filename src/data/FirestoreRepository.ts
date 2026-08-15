@@ -4,6 +4,7 @@ import { db } from '@/lib/firebase';
 import type { DataRepository } from './DataRepository';
 import type { Assignment, AssignmentStatus, BackupData, ClassRoom, CombinedAnalysis, Exam, ExamMark, GraceMark, PlusOneMark, Student, UserSettings } from '@/types';
 import { DEFAULT_SETTINGS } from '@/types';
+import { removeUndefinedValues } from '@/utils/firestore';
 
 const now = () => new Date().toISOString();
 type Entity = { id: string; createdAt: string; updatedAt: string };
@@ -15,12 +16,12 @@ export class FirestoreRepository implements DataRepository {
   private ref(name: string, id: string) { return doc(db, 'users', this.uid, name, id); }
   private async all<T>(name: string, field?: string, value?: string): Promise<T[]> { const source = field ? query(this.col(name), where(field, '==', value)) : this.col(name); return (await getDocs(source)).docs.map(d => d.data() as T); }
   private async one<T>(name: string, id: string): Promise<T | null> { const snap = await getDoc(this.ref(name,id)); return snap.exists() ? snap.data() as T : null; }
-  private async create<T extends Entity>(name:string, value: Omit<T,'id'|'createdAt'|'updatedAt'>):Promise<T>{const e={...value,id:uuidv4(),createdAt:now(),updatedAt:now()} as T;await setDoc(this.ref(name,e.id),e);return e;}
-  private async update<T extends Entity>(name:string, value:T):Promise<void>{await setDoc(this.ref(name,value.id),{...value,updatedAt:now()});}
+  private async create<T extends Entity>(name:string, value: Omit<T,'id'|'createdAt'|'updatedAt'>):Promise<T>{const e={...value,id:uuidv4(),createdAt:now(),updatedAt:now()} as T;await setDoc(this.ref(name,e.id),removeUndefinedValues(e));return e;}
+  private async update<T extends Entity>(name:string, value:T):Promise<void>{await setDoc(this.ref(name,value.id),removeUndefinedValues({...value,updatedAt:now()}));}
   private async remove(name:string,id:string){await deleteDoc(this.ref(name,id));}
   private async removeWhere(name: string, field: string, value: string) { await Promise.all((await this.all<Entity>(name, field, value)).map(item => this.remove(name, item.id))); }
   async getSettings(): Promise<UserSettings | null> { const stored = await this.one<UserSettings>('settings','app'); return stored ? { ...DEFAULT_SETTINGS, ...stored } as UserSettings : null; }
-  async saveSettings(settings:UserSettings){await setDoc(this.ref('settings','app'),{...settings,id:'app',updatedAt:now()});}
+  async saveSettings(settings:UserSettings){await setDoc(this.ref('settings','app'),removeUndefinedValues({...settings,id:'app',updatedAt:now()}));}
   async getClasses(){return this.all<ClassRoom>('classes');} async getClass(id:string){return this.one<ClassRoom>('classes',id);} async createClass(v:Omit<ClassRoom,'id'|'createdAt'|'updatedAt'>){return this.create<ClassRoom>('classes',v);} async updateClass(v:ClassRoom){return this.update('classes',v);} async deleteClass(id:string){await Promise.all(['students','exams','examMarks','plusOneMarks','assignments','assignmentStatuses','graceMarks','combinedAnalyses'].map(name=>this.removeWhere(name,'classId',id)));await this.remove('classes',id);}
   async getStudents(classId?:string){return this.all<Student>('students',classId?'classId':undefined,classId);} async getStudent(id:string){return this.one<Student>('students',id);} async createStudent(v:Omit<Student,'id'|'createdAt'|'updatedAt'>){return this.create<Student>('students',v);} async updateStudent(v:Student){return this.update('students',v);} async deleteStudent(id:string){await Promise.all(['examMarks','plusOneMarks','assignmentStatuses','graceMarks'].map(name=>this.removeWhere(name,'studentId',id)));return this.remove('students',id);} async bulkCreateStudents(v:Omit<Student,'id'|'createdAt'|'updatedAt'>[]){return Promise.all(v.map(x=>this.createStudent(x)));}
   async getExams(classId?:string){return this.all<Exam>('exams',classId?'classId':undefined,classId);} async getExam(id:string){return this.one<Exam>('exams',id);} async createExam(v:Omit<Exam,'id'|'createdAt'|'updatedAt'>){return this.create<Exam>('exams',v);} async updateExam(v:Exam){return this.update('exams',v);} async deleteExam(id:string){await Promise.all(['examMarks','plusOneMarks'].map(name=>this.removeWhere(name,'examId',id)));return this.remove('exams',id);}
@@ -31,6 +32,15 @@ export class FirestoreRepository implements DataRepository {
   async getGraceMarks(classId?:string){return this.all<GraceMark>('graceMarks',classId?'classId':undefined,classId);} async getGraceMarksForStudent(studentId:string){return this.all<GraceMark>('graceMarks','studentId',studentId);} async createGraceMark(v:Omit<GraceMark,'id'|'createdAt'|'updatedAt'>){return this.create<GraceMark>('graceMarks',v);} async updateGraceMark(v:GraceMark){return this.update('graceMarks',v);} async deleteGraceMark(id:string){return this.remove('graceMarks',id);}
   async getCombinedAnalyses(classId?:string){return this.all<CombinedAnalysis>('combinedAnalyses',classId?'classId':undefined,classId);} async createCombinedAnalysis(v:Omit<CombinedAnalysis,'id'|'createdAt'|'updatedAt'>){if(v.examIds.length<2)throw new Error('A combined analysis requires at least two exams');return this.create<CombinedAnalysis>('combinedAnalyses',v);} async updateCombinedAnalysis(v:CombinedAnalysis){if(v.examIds.length<2)throw new Error('A combined analysis requires at least two exams');return this.update('combinedAnalyses',v);} async deleteCombinedAnalysis(id:string){return this.remove('combinedAnalyses',id);}
   async exportBackup():Promise<BackupData>{const [settings,classes,students,exams,examMarks,plusOneMarks,assignments,assignmentStatuses,graceMarks,combinedAnalyses]=await Promise.all([this.getSettings(),this.getClasses(),this.getStudents(),this.getExams(),this.all<ExamMark>('examMarks'),this.all<PlusOneMark>('plusOneMarks'),this.getAssignments(),this.all<AssignmentStatus>('assignmentStatuses'),this.getGraceMarks(),this.getCombinedAnalyses()]);return {version:'1.0.3',exportedAt:now(),settings,classes,students,exams,examMarks,plusOneMarks,assignments,assignmentStatuses,graceMarks,combinedAnalyses};}
-  async importBackup(){throw new Error('Importing backups into an online account is not supported.');}
-  async clearAllData(){throw new Error('Online data cannot be cleared from this screen.');}
+  async importBackup(data: BackupData, onProgress?: (completed: number, total: number) => void){
+    const source: [string, { id: string }[]][] = [['settings', data.settings ? [{ ...data.settings, id: 'app' }] : []], ['classes', data.classes], ['students', data.students], ['exams', data.exams], ['examMarks', data.examMarks], ['plusOneMarks', data.plusOneMarks], ['assignments', data.assignments], ['assignmentStatuses', data.assignmentStatuses], ['graceMarks', data.graceMarks], ['combinedAnalyses', data.combinedAnalyses ?? []]];
+    const existing = await Promise.all(source.map(async ([name]) => [name, (await getDocs(this.col(name))).docs] as const));
+    const operations = existing.reduce((count, [, docs]) => count + docs.length, 0) + source.reduce((count, [, values]) => count + values.length, 0);
+    let completed = 0;
+    const deleteEntries = existing.flatMap(([, docs]) => docs.map(snap => snap.ref));
+    for (let i = 0; i < deleteEntries.length; i += 450) { const batch = writeBatch(db); deleteEntries.slice(i, i + 450).forEach(ref => batch.delete(ref)); await batch.commit(); completed += Math.min(450, deleteEntries.length - i); onProgress?.(completed, operations); }
+    const setEntries = source.flatMap(([name, values]) => values.map(value => ({ ref: this.ref(name, value.id), value: removeUndefinedValues(value) })));
+    for (let i = 0; i < setEntries.length; i += 450) { const batch = writeBatch(db); setEntries.slice(i, i + 450).forEach(entry => batch.set(entry.ref, entry.value)); await batch.commit(); completed += Math.min(450, setEntries.length - i); onProgress?.(completed, operations); }
+  }
+  async clearAllData(){const names=['settings','classes','students','exams','examMarks','plusOneMarks','assignments','assignmentStatuses','graceMarks','combinedAnalyses'];const docs=(await Promise.all(names.map(name=>getDocs(this.col(name))))).flatMap(s=>s.docs);for(let i=0;i<docs.length;i+=450){const batch=writeBatch(db);docs.slice(i,i+450).forEach(d=>batch.delete(d.ref));await batch.commit();}}
 }
