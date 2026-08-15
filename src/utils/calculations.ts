@@ -64,7 +64,8 @@ export function calcPlusOneResult(
   const maxTotal = settings.plusOneMaxTotal || maxTE + maxCE;
   const requiredTE = (settings.requiredTEPercent / 100) * maxTE;
   const requiredTotal = (settings.requiredTotalPercent / 100) * maxTotal;
-  const requiredDoublePassTE = ((settings.doublePassRequiredPercent ?? settings.requiredTEPercent) / 100) * maxTE;
+  // Stored legacy field name is retained for existing user settings; its value is now TE marks, not a percentage.
+  const requiredDoublePassTE = settings.doublePassRequiredPercent ?? settings.requiredTEPercent;
   const aPlusThreshold = settings.aPlusThreshold;
   const doubleAPlusThreshold = settings.doubleAPlusThreshold;
 

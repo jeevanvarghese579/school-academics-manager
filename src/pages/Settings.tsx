@@ -8,7 +8,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { UserSettings, ClassRoom } from '@/types';
 import { downloadFile } from '@/utils/csv';
 
-const APP_VERSION = '1.0.7';
+const APP_VERSION = '1.0.8';
 
 export function Settings() {
   const { repo, mode, signOut, exitOfflineMode } = useApp();
@@ -110,8 +110,8 @@ export function Settings() {
             </div>
           </div>
           <div>
-            <label className="label">TE Percentage Required for Double Pass</label>
-            <input type="number" className="input" value={settings.doublePassRequiredPercent} onChange={(e) => update({ doublePassRequiredPercent: parseFloat(e.target.value) || 0 })} min="0" max="100" />
+            <label className="label">TE Marks Required for Double Pass</label>
+            <input type="number" className="input" value={settings.doublePassRequiredPercent} onChange={(e) => update({ doublePassRequiredPercent: parseFloat(e.target.value) || 0 })} min="0" />
           </div>
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Enable Ranking in Reports</label>
