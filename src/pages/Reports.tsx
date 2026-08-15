@@ -24,6 +24,7 @@ import {
 } from "@/utils/calculations";
 import { classReportExamSchema } from "@/utils/reportColumns";
 import { matchesStudentSearch, normalExamHeader } from "@/utils/reportPresentation";
+import { normalExamMarkTone } from "@/utils/reportMarkStyle";
 
 type Direction = "asc" | "desc";
 
@@ -308,6 +309,8 @@ function ClassReport({
     const header = normalExamHeader(exam);
     return <th key={exam.id} className="px-3 py-2 text-left text-xs uppercase cursor-pointer" onClick={() => sort === exam.id ? setDir(dir === "asc" ? "desc" : "asc") : (setSort(exam.id), setDir("asc"))}><div>{header.name}</div><div className="mt-0.5 normal-case text-[11px] font-normal text-gray-500">{header.maximum}</div></th>;
   };
+  const assignmentColumn = () => <th className="px-3 py-2 text-left text-xs uppercase cursor-pointer" onClick={() => sort === "assign" ? setDir(dir === "asc" ? "desc" : "asc") : (setSort("assign"), setDir("asc"))}><div>Assignments</div><div className="mt-0.5 normal-case text-[11px] font-normal text-gray-500">Total {assignments.length}</div></th>;
+  const markClass = (mark: number | null, exam: Exam) => ({ failed: "bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-300", aplus: "bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-300", normal: "", neutral: "text-gray-400" }[normalExamMarkTone(mark, exam.maxMarks, config)]);
   const metric = (
     n: number | null | undefined,
     po: ReturnType<typeof calcPlusOneResult> | null,
@@ -384,7 +387,7 @@ function ClassReport({
                   .map((analysis) =>
                     column(`combined:${analysis.id}`, analysis.name),
                   )}
-                {visible("assign") && column("assign", "Assignments")}
+                {visible("assign") && assignmentColumn()}
                 {visible("grace") && column("grace", "Grace")}
               </tr>
             </thead>
@@ -439,7 +442,7 @@ function ClassReport({
                   {regular
                     .filter((exam) => visible(exam.id))
                     .map((exam) => (
-                      <td key={exam.id}>{row.examValues[exam.id] === null ? "—" : formatMark(row.examValues[exam.id]!)}</td>
+                      <td key={exam.id}><span className={`inline-block rounded px-2 py-0.5 ${markClass(row.examValues[exam.id], exam)}`}>{row.examValues[exam.id] === null ? "—" : formatMark(row.examValues[exam.id]!)}</span></td>
                     ))}
                   {combined
                     .filter((analysis) => visible(`combined:${analysis.id}`))
@@ -454,9 +457,7 @@ function ClassReport({
                       );
                     })}
                   {visible("assign") && (
-                    <td>
-                      {row.submitted}/{assignments.length}
-                    </td>
+                    <td>{row.submitted}</td>
                   )}
                   {visible("grace") && <td>{row.grace || "—"}</td>}
                 </tr>
