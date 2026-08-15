@@ -13,6 +13,7 @@ import { Reports } from '@/pages/Reports';
 import { Settings } from '@/pages/Settings';
 import { ImportExport } from '@/pages/ImportExport';
 import { CombinedAnalysis } from '@/pages/CombinedAnalysis';
+import { StudentProfile } from '@/pages/StudentProfile';
 
 function AppRoutes() {
   const { mode, loading } = useApp();
@@ -39,6 +40,7 @@ function AppRoutes() {
         <Route path="/assignments/:id" element={<AssignmentDetail />} />
         <Route path="/grace-marks" element={<GraceMarks />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/reports/student/:id" element={<StudentProfile />} />
         <Route path="/combined" element={<CombinedAnalysis />} />
         <Route path="/import-export" element={<ImportExport />} />
         <Route path="/settings" element={<Settings />} />
