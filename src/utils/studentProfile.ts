@@ -20,7 +20,7 @@ export type ProfileStatusTone = 'success' | 'warning' | 'danger' | 'neutral';
 /** Presentation follows the status already calculated by calcPlusOneResult; it never recalculates marks. */
 export function profileStatusTone(status: string): ProfileStatusTone {
   if (status === 'achieved') return 'success';
-  if (status === 'not-achieved') return 'warning';
+  if (status === 'not-achieved' || status === 'feasible') return 'warning';
   if (status === 'not-eligible' || status === 'impossible') return 'danger';
   return 'neutral';
 }

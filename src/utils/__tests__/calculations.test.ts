@@ -218,6 +218,16 @@ describe('calcPlusOneResult', () => {
     expect(r.doublePass).toBe(false);
     expect(r.passed).toBe(true);
   });
+
+  it('exposes TE-only field and Double A+ feasibility statuses', () => {
+    const base = { ...mockSettings, plusOneMaxTE: 60, doublePassRequiredPercent: 45, doubleAPlusThreshold: 104 };
+    expect(calcPlusOneResult(44, 20, base).teBelowDoublePassThreshold).toBe(true);
+    expect(calcPlusOneResult(45, 0, base).teBelowDoublePassThreshold).toBe(false);
+    expect(calcPlusOneResult(46, 0, base).doubleAPlusStatus).toBe('feasible');
+    expect(calcPlusOneResult(44, 0, base).doubleAPlusStatus).toBe('feasible');
+    expect(calcPlusOneResult(13, 0, base).doubleAPlusStatus).toBe('not-eligible');
+    expect(calcPlusOneResult(104, 0, base).doubleAPlusStatus).toBe('achieved');
+  });
 });
 
 describe('roundTo and formatPercent', () => {

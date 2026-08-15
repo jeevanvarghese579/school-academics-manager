@@ -33,6 +33,7 @@ describe('student profile data', () => {
   it('maps calculated statuses to the intended card colors', () => {
     expect(profileStatusTone('achieved')).toBe('success');
     expect(profileStatusTone('not-achieved')).toBe('warning');
+    expect(profileStatusTone('feasible')).toBe('warning');
     expect(profileStatusTone('not-eligible')).toBe('danger');
     expect(profileStatusTone('impossible')).toBe('danger');
     expect(profileStatusTone('incomplete')).toBe('neutral');

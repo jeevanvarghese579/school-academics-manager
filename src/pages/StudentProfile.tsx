@@ -1,41 +1,605 @@
-// @ts-nocheck -- JSX status-card helper shares a calculated status union across three result types.
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, CheckCircle2, UserRound } from 'lucide-react';
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { useApp } from '@/context/AppContext';
-import type { Assignment, AssignmentStatus, ClassRoom, CombinedAnalysis, Exam, ExamMark, GraceMark, PlusOneMark, Student, UserSettings } from '@/types';
-import { DEFAULT_SETTINGS } from '@/types';
-import { calcCombinedPercentage, calcPercentage, calcPlusOneResult, formatNumber, formatPercent } from '@/utils/calculations';
-import { adjacentStudentIds, profileExams, profileGraphPoints, profileStatusTone } from '@/utils/studentProfile';
+import { useEffect, useMemo, useState } from "react";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
+import { ArrowLeft, ArrowRight, CheckCircle2, UserRound } from "lucide-react";
+import {
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useApp } from "@/context/AppContext";
+import type {
+  Assignment,
+  AssignmentStatus,
+  ClassRoom,
+  CombinedAnalysis,
+  Exam,
+  ExamMark,
+  GraceMark,
+  PlusOneMark,
+  Student,
+  UserSettings,
+} from "@/types";
+import { DEFAULT_SETTINGS } from "@/types";
+import {
+  calcCombinedPercentage,
+  calcPercentage,
+  calcPlusOneResult,
+  formatNumber,
+  formatPercent,
+} from "@/utils/calculations";
+import {
+  adjacentStudentIds,
+  profileExams,
+  profileGraphPoints,
+  profileStatusTone,
+} from "@/utils/studentProfile";
 
 const statusClasses = {
-  success: 'bg-success-50 dark:bg-success-900/20 border-success-200 dark:border-success-800 text-success-800 dark:text-success-200',
-  warning: 'bg-warning-50 dark:bg-warning-900/20 border-warning-200 dark:border-warning-800 text-warning-800 dark:text-warning-200',
-  danger: 'bg-error-50 dark:bg-error-900/20 border-error-200 dark:border-error-800 text-error-800 dark:text-error-200',
-  neutral: 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300',
+  success:
+    "bg-success-50 dark:bg-success-900/20 border-success-200 dark:border-success-800 text-success-800 dark:text-success-200",
+  warning:
+    "bg-warning-50 dark:bg-warning-900/20 border-warning-200 dark:border-warning-800 text-warning-800 dark:text-warning-200",
+  danger:
+    "bg-error-50 dark:bg-error-900/20 border-error-200 dark:border-error-800 text-error-800 dark:text-error-200",
+  neutral:
+    "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300",
 };
 
 export function StudentProfile() {
-  const { id } = useParams<{ id: string }>(); const navigate = useNavigate(); const [search] = useSearchParams(); const { repo } = useApp();
-  const [student, setStudent] = useState<Student | null>(null); const [classmates, setClassmates] = useState<Student[]>([]); const [classRoom, setClassRoom] = useState<ClassRoom | null>(null); const [exams, setExams] = useState<Exam[]>([]); const [marks, setMarks] = useState<ExamMark[]>([]); const [plusMarks, setPlusMarks] = useState<PlusOneMark[]>([]); const [combined, setCombined] = useState<CombinedAnalysis[]>([]); const [assignments, setAssignments] = useState<Assignment[]>([]); const [statuses, setStatuses] = useState<AssignmentStatus[]>([]); const [grace, setGrace] = useState<GraceMark[]>([]); const [settings, setSettings] = useState<UserSettings | null>(null); const [loading, setLoading] = useState(true);
-  const backTo = `/reports${search.get('return') || ''}`;
-  useEffect(() => { if (!repo || !id) return; setLoading(true); void (async () => { try { const current = await repo.getStudent(id); setStudent(current); if (!current) return; const [room, students, classExams, classMarks, classPlus, analyses, classAssignments, classStatuses, classGrace, currentSettings] = await Promise.all([repo.getClass(current.classId), repo.getStudents(current.classId), repo.getExams(current.classId), repo.getAllMarksForClass(current.classId), repo.getAllPlusOneMarksForClass(current.classId), repo.getCombinedAnalyses(current.classId), repo.getAssignments(current.classId), repo.getAllAssignmentStatusesForClass(current.classId), repo.getGraceMarks(current.classId), repo.getSettings()]); setClassRoom(room); setClassmates(students); setExams(classExams); setMarks(classMarks); setPlusMarks(classPlus); setCombined(analyses); setAssignments(classAssignments); setStatuses(classStatuses); setGrace(classGrace.filter((entry) => entry.studentId === current.id)); setSettings(currentSettings); } finally { setLoading(false); } })(); }, [repo, id]);
-  const config = settings ?? DEFAULT_SETTINGS; const decimals = config.decimalPlaces; const ordered = useMemo(() => profileExams(exams, student?.classId ?? ''), [exams, student]); const regular = ordered.filter((exam) => exam.type === 'regular'); const plusExams = ordered.filter((exam) => exam.type === 'plusOne'); const graph = useMemo(() => student ? profileGraphPoints(exams, student.classId, student.id, marks, plusMarks, config) : [], [exams, student, marks, plusMarks, config]);
-  const adjacent = adjacentStudentIds(classmates, student?.id ?? ''); const profilePath = (studentId: string) => `/reports/student/${studentId}${search.toString() ? `?${search.toString()}` : ''}`; const goToStudent = (studentId: string | null) => { if (studentId) navigate(profilePath(studentId)); };
-  useEffect(() => { const onKeyDown = (event: KeyboardEvent) => { const target = event.target as HTMLElement | null; if (target?.closest('input, textarea, select, button, [contenteditable="true"]')) return; if (event.key === 'ArrowLeft') goToStudent(adjacent.previous); if (event.key === 'ArrowRight') goToStudent(adjacent.next); }; window.addEventListener('keydown', onKeyDown); return () => window.removeEventListener('keydown', onKeyDown); }, [adjacent.previous, adjacent.next, id]);
-  if (loading) return <div className="space-y-4"><div className="skeleton h-8 w-64" /><div className="skeleton h-96" /></div>;
-  if (!student) return <EmptyState title="Student not found" description="This student may have been deleted." action={<Link to={backTo} className="btn-primary">Back to Class Report</Link>} />;
-  const statusFor = (assignmentId: string) => statuses.find((status) => status.assignmentId === assignmentId && status.studentId === student.id)?.submitted ?? false; const submitted = assignments.filter((assignment) => statusFor(assignment.id)).length;
-  return <div className="space-y-6"><div className="flex items-center gap-3"><button onClick={() => navigate(backTo)} className="btn-icon" aria-label="Back to Class Report"><ArrowLeft className="w-5 h-5" /></button><div><h1 className="text-2xl font-bold">Student Profile</h1><p className="text-sm text-gray-500">Complete academic record</p></div></div>
-    <section className="card p-5"><div className="flex items-center gap-3"><UserRound className="w-7 h-7 text-primary-600" /><div><h2 className="text-xl font-semibold">{student.name}</h2><p className="text-sm text-gray-500">Roll no. {student.rollNumber} · {classRoom ? `${classRoom.name} ${classRoom.division}` : 'Class unavailable'}{student.admissionNumber ? ` · Admission no. ${student.admissionNumber}` : ''}</p></div></div></section>
-    <div className="flex items-center justify-between gap-3"><button className="btn-secondary" disabled={!adjacent.previous} onClick={() => goToStudent(adjacent.previous)}><ArrowLeft className="w-4 h-4" /> Previous Student</button><button className="btn-secondary" disabled={!adjacent.next} onClick={() => goToStudent(adjacent.next)}>Next Student <ArrowRight className="w-4 h-4" /></button></div>
-    <section className="card p-5"><h2 className="font-semibold mb-4">Performance graph</h2>{graph.length === 0 ? <p className="text-sm text-gray-500">No entered exam marks to plot.</p> : <div className="h-72"><ResponsiveContainer width="100%" height="100%"><LineChart data={graph}><XAxis dataKey="label" tick={{ fontSize: 12 }} /><YAxis domain={[0, 100]} unit="%" /><Tooltip formatter={(value) => value === undefined ? '—' : formatPercent(Number(value), decimals)} labelFormatter={(label, payload) => `${label}${payload[0]?.payload.date ? ` · ${payload[0].payload.date}` : ''}`} /><Line type="monotone" dataKey="percentage" name="Exam percentage" stroke="#2563eb" connectNulls={false} /></LineChart></ResponsiveContainer></div>}</section>
-    <section className="card overflow-hidden"><div className="p-5"><h2 className="font-semibold">Normal exam results</h2></div>{regular.length === 0 ? <p className="px-5 pb-5 text-sm text-gray-500">No normal exams for this class.</p> : <div className="overflow-x-auto"><table className="w-full"><thead><tr><th>Exam</th><th>Date</th><th>Obtained</th><th>Maximum</th><th>Percentage</th></tr></thead><tbody>{regular.map((exam) => { const obtained = marks.find((entry) => entry.examId === exam.id && entry.studentId === student.id)?.marks ?? null; const percentage = calcPercentage(obtained, exam.maxMarks); return <tr key={exam.id} className="border-t"><td>{exam.name}</td><td>{exam.date || '—'}</td><td>{obtained ?? 'Not entered'}</td><td>{exam.maxMarks}</td><td>{percentage === null ? '—' : formatPercent(percentage, decimals)}</td></tr>; })}</tbody></table></div>}</section>
-    {plusExams.map((exam) => { const mark = plusMarks.find((entry) => entry.examId === exam.id && entry.studentId === student.id); if (!mark || (mark.teMarks === null && mark.ceMarks === null)) return null; const result = calcPlusOneResult(mark.teMarks, mark.ceMarks, config); const doubleStatus = !config.doublePassEnabled ? 'disabled' : result.teMarks === null ? 'incomplete' : result.doublePass ? 'achieved' : result.isImpossible ? 'impossible' : 'not-achieved'; const aPlusStatus = result.teMarks === null ? 'incomplete' : result.aPlusAchieved ? 'achieved' : 'not-achieved'; const doubleAPlusStatus = result.teMarks === null ? 'incomplete' : result.doubleAPlusAchieved ? 'achieved' : 'not-eligible'; const requirement = (value: number | null, achieved: boolean) => result.teMarks === null ? 'Not entered' : achieved ? '0' : value === null ? '—' : formatNumber(value, decimals); const statusCard = (title: string, threshold: number, status: typeof doubleStatus, label: string, required: number | null, achieved: boolean) => <div className={`rounded-lg border p-4 h-full space-y-1 ${statusClasses[profileStatusTone(status)]}`}><p className="font-medium">{title}</p><p>Threshold: {threshold} TE marks</p><p>Status: {label}</p><p>Required (TE marks): {requirement(required, achieved)}</p></div>; return <section key={exam.id} className="card p-5 space-y-5"><div><h2 className="font-semibold">Plus One Result — {exam.name}</h2><p className="text-sm text-gray-500">{exam.date || 'Date not entered'}</p></div><dl className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm"><div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-3"><dt>CE marks</dt><dd className="font-medium mt-1">{mark.ceMarks ?? 'Not entered'} / {config.plusOneMaxCE}</dd></div><div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-3"><dt>TE marks</dt><dd className="font-medium mt-1">{mark.teMarks ?? 'Not entered'} / {config.plusOneMaxTE}</dd></div><div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-3"><dt>Total marks</dt><dd className="font-medium mt-1">{result.total === null ? '—' : formatNumber(result.total, decimals)} / {config.plusOneMaxTotal}</dd></div><div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-3"><dt>TE percentage</dt><dd className="font-medium mt-1">{result.tePercentage === null ? '—' : formatPercent(result.tePercentage, decimals)}</dd></div><div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-3"><dt>Total percentage</dt><dd className="font-medium mt-1">{result.percentage === null ? '—' : formatPercent(result.percentage, decimals)}</dd></div></dl><div className="grid md:grid-cols-3 gap-4 text-sm">{statusCard('Double Pass', config.doublePassRequiredPercent, doubleStatus, doubleStatus === 'achieved' ? 'Achieved' : doubleStatus === 'impossible' ? 'Impossible' : doubleStatus === 'incomplete' ? 'Not entered' : doubleStatus === 'disabled' ? 'Disabled' : 'Not achieved', result.marksRequiredForDoublePass, result.doublePass)}{statusCard('A+', config.aPlusThreshold, aPlusStatus, aPlusStatus === 'achieved' ? 'Achieved' : aPlusStatus === 'incomplete' ? 'Not entered' : 'Not achieved', result.marksRequiredForAPlus, result.aPlusAchieved)}{statusCard('Double A+', config.doubleAPlusThreshold, doubleAPlusStatus, doubleAPlusStatus === 'achieved' ? 'Eligible' : doubleAPlusStatus === 'incomplete' ? 'Not entered' : 'Not eligible', result.marksRequiredForDoubleAPlus, result.doubleAPlusAchieved)}</div><p className="text-xs text-gray-500">Requirements use TE marks only. CE and grace marks are not included.</p></section>; })}
-    <section className="card overflow-hidden"><div className="p-5"><h2 className="font-semibold">Combined analysis</h2></div>{combined.length === 0 ? <p className="px-5 pb-5 text-sm text-gray-500">No saved combined analyses for this class.</p> : <div className="overflow-x-auto"><table className="w-full"><thead><tr><th>Analysis</th><th>Included exams</th><th>Obtained</th><th>Maximum</th><th>Percentage</th></tr></thead><tbody>{combined.map((analysis) => { const included = regular.filter((exam) => analysis.examIds.includes(exam.id)); const result = calcCombinedPercentage(included.map((exam) => ({ obtained: marks.find((entry) => entry.examId === exam.id && entry.studentId === student.id)?.marks ?? null, maxMarks: exam.maxMarks }))); return <tr key={analysis.id} className="border-t"><td>{analysis.name}</td><td>{included.map((exam) => exam.name).join(', ') || 'No current exams'}</td><td>{result.combinedObtained}</td><td>{result.combinedMax}</td><td>{result.combinedPercentage === null ? '—' : formatPercent(result.combinedPercentage, decimals)}</td></tr>; })}</tbody></table></div>}</section>
-    <section className="card overflow-hidden"><div className="p-5"><h2 className="font-semibold">Assignments</h2><p className="text-sm text-gray-500">{submitted}/{assignments.length} submitted</p></div>{assignments.length === 0 ? <p className="px-5 pb-5 text-sm text-gray-500">No assignments for this class.</p> : <div className="overflow-x-auto"><table className="w-full"><thead><tr><th>Assignment</th><th>Due date</th><th>Status</th></tr></thead><tbody>{assignments.map((assignment) => <tr key={assignment.id} className="border-t"><td>{assignment.title}</td><td>{assignment.dueDate || '—'}</td><td>{statusFor(assignment.id) ? <span className="inline-flex gap-1 items-center text-success-700"><CheckCircle2 className="w-4 h-4" /> Submitted</span> : 'Not submitted'}</td></tr>)}</tbody></table></div>}</section>
-    <section className="card overflow-hidden"><div className="p-5"><h2 className="font-semibold">Grace marks</h2><p className="text-sm text-gray-500">Informational only; excluded from all results and requirements.</p></div>{grace.length === 0 ? <p className="px-5 pb-5 text-sm text-gray-500">No grace marks recorded.</p> : <div className="overflow-x-auto"><table className="w-full"><thead><tr><th>Title</th><th>Category</th><th>Date</th><th>Marks</th></tr></thead><tbody>{grace.map((entry) => <tr key={entry.id} className="border-t"><td>{entry.title}</td><td>{entry.category}</td><td>{entry.date || '—'}</td><td>{entry.marks}</td></tr>)}</tbody></table></div>}</section>
-  </div>;
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [search] = useSearchParams();
+  const { repo } = useApp();
+  const [student, setStudent] = useState<Student | null>(null);
+  const [classmates, setClassmates] = useState<Student[]>([]);
+  const [classRoom, setClassRoom] = useState<ClassRoom | null>(null);
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [marks, setMarks] = useState<ExamMark[]>([]);
+  const [plusMarks, setPlusMarks] = useState<PlusOneMark[]>([]);
+  const [combined, setCombined] = useState<CombinedAnalysis[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [statuses, setStatuses] = useState<AssignmentStatus[]>([]);
+  const [grace, setGrace] = useState<GraceMark[]>([]);
+  const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const backTo = `/reports${search.get("return") || ""}`;
+  useEffect(() => {
+    if (!repo || !id) return;
+    setLoading(true);
+    void (async () => {
+      try {
+        const current = await repo.getStudent(id);
+        setStudent(current);
+        if (!current) return;
+        const [
+          room,
+          students,
+          classExams,
+          classMarks,
+          classPlus,
+          analyses,
+          classAssignments,
+          classStatuses,
+          classGrace,
+          currentSettings,
+        ] = await Promise.all([
+          repo.getClass(current.classId),
+          repo.getStudents(current.classId),
+          repo.getExams(current.classId),
+          repo.getAllMarksForClass(current.classId),
+          repo.getAllPlusOneMarksForClass(current.classId),
+          repo.getCombinedAnalyses(current.classId),
+          repo.getAssignments(current.classId),
+          repo.getAllAssignmentStatusesForClass(current.classId),
+          repo.getGraceMarks(current.classId),
+          repo.getSettings(),
+        ]);
+        setClassRoom(room);
+        setClassmates(students);
+        setExams(classExams);
+        setMarks(classMarks);
+        setPlusMarks(classPlus);
+        setCombined(analyses);
+        setAssignments(classAssignments);
+        setStatuses(classStatuses);
+        setGrace(classGrace.filter((entry) => entry.studentId === current.id));
+        setSettings(currentSettings);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [repo, id]);
+  const config = settings ?? DEFAULT_SETTINGS;
+  const decimals = config.decimalPlaces;
+  const ordered = useMemo(
+    () => profileExams(exams, student?.classId ?? ""),
+    [exams, student],
+  );
+  const regular = ordered.filter((exam) => exam.type === "regular");
+  const plusExams = ordered.filter((exam) => exam.type === "plusOne");
+  const graph = useMemo(
+    () =>
+      student
+        ? profileGraphPoints(
+            exams,
+            student.classId,
+            student.id,
+            marks,
+            plusMarks,
+            config,
+          )
+        : [],
+    [exams, student, marks, plusMarks, config],
+  );
+  const adjacent = adjacentStudentIds(classmates, student?.id ?? "");
+  const profilePath = (studentId: string) =>
+    `/reports/student/${studentId}${search.toString() ? `?${search.toString()}` : ""}`;
+  const goToStudent = (studentId: string | null) => {
+    if (studentId) navigate(profilePath(studentId));
+  };
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.closest(
+          'input, textarea, select, button, [contenteditable="true"]',
+        )
+      )
+        return;
+      if (event.key === "ArrowLeft") goToStudent(adjacent.previous);
+      if (event.key === "ArrowRight") goToStudent(adjacent.next);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [adjacent.previous, adjacent.next, id]);
+  if (loading)
+    return (
+      <div className="space-y-4">
+        <div className="skeleton h-8 w-64" />
+        <div className="skeleton h-96" />
+      </div>
+    );
+  if (!student)
+    return (
+      <EmptyState
+        title="Student not found"
+        description="This student may have been deleted."
+        action={
+          <Link to={backTo} className="btn-primary">
+            Back to Class Report
+          </Link>
+        }
+      />
+    );
+  const statusFor = (assignmentId: string) =>
+    statuses.find(
+      (status) =>
+        status.assignmentId === assignmentId && status.studentId === student.id,
+    )?.submitted ?? false;
+  const submitted = assignments.filter((assignment) =>
+    statusFor(assignment.id),
+  ).length;
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => navigate(backTo)}
+          className="btn-icon"
+          aria-label="Back to Class Report"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold">Student Profile</h1>
+          <p className="text-sm text-gray-500">Complete academic record</p>
+        </div>
+      </div>
+      <section className="card p-5">
+        <div className="flex items-center gap-3">
+          <UserRound className="w-7 h-7 text-primary-600" />
+          <div>
+            <h2 className="text-xl font-semibold">{student.name}</h2>
+            <p className="text-sm text-gray-500">
+              Roll no. {student.rollNumber} ·{" "}
+              {classRoom
+                ? `${classRoom.name} ${classRoom.division}`
+                : "Class unavailable"}
+              {student.admissionNumber
+                ? ` · Admission no. ${student.admissionNumber}`
+                : ""}
+            </p>
+          </div>
+        </div>
+      </section>
+      <div className="flex items-center justify-between gap-3">
+        <button
+          className="btn-secondary"
+          disabled={!adjacent.previous}
+          onClick={() => goToStudent(adjacent.previous)}
+        >
+          <ArrowLeft className="w-4 h-4" /> Previous Student
+        </button>
+        <button
+          className="btn-secondary"
+          disabled={!adjacent.next}
+          onClick={() => goToStudent(adjacent.next)}
+        >
+          Next Student <ArrowRight className="w-4 h-4" />
+        </button>
+      </div>
+      <section className="card p-5">
+        <h2 className="font-semibold mb-4">Performance graph</h2>
+        {graph.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            No entered exam marks to plot.
+          </p>
+        ) : (
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={graph}>
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                <YAxis domain={[0, 100]} unit="%" />
+                <Tooltip
+                  formatter={(value) =>
+                    value === undefined
+                      ? "—"
+                      : formatPercent(Number(value), decimals)
+                  }
+                  labelFormatter={(label, payload) =>
+                    `${label}${payload[0]?.payload.date ? ` · ${payload[0].payload.date}` : ""}`
+                  }
+                />
+                <Line
+                  type="monotone"
+                  dataKey="percentage"
+                  name="Exam percentage"
+                  stroke="#2563eb"
+                  connectNulls={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </section>
+      <section className="card overflow-hidden">
+        <div className="p-5">
+          <h2 className="font-semibold">Normal exam results</h2>
+        </div>
+        {regular.length === 0 ? (
+          <p className="px-5 pb-5 text-sm text-gray-500">
+            No normal exams for this class.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th>Exam</th>
+                  <th>Date</th>
+                  <th>Obtained</th>
+                  <th>Maximum</th>
+                  <th>Percentage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {regular.map((exam) => {
+                  const obtained =
+                    marks.find(
+                      (entry) =>
+                        entry.examId === exam.id &&
+                        entry.studentId === student.id,
+                    )?.marks ?? null;
+                  const percentage = calcPercentage(obtained, exam.maxMarks);
+                  return (
+                    <tr key={exam.id} className="border-t">
+                      <td>{exam.name}</td>
+                      <td>{exam.date || "—"}</td>
+                      <td>{obtained ?? "Not entered"}</td>
+                      <td>{exam.maxMarks}</td>
+                      <td>
+                        {percentage === null
+                          ? "—"
+                          : formatPercent(percentage, decimals)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+      {plusExams.map((exam) => {
+        const mark = plusMarks.find(
+          (entry) => entry.examId === exam.id && entry.studentId === student.id,
+        );
+        if (!mark || (mark.teMarks === null && mark.ceMarks === null))
+          return null;
+        const result = calcPlusOneResult(mark.teMarks, mark.ceMarks, config);
+        const doubleStatus = !config.doublePassEnabled
+          ? "disabled"
+          : result.teMarks === null
+            ? "incomplete"
+            : result.doublePass
+              ? "achieved"
+              : result.isImpossible
+                ? "impossible"
+                : "not-achieved";
+        const aPlusStatus =
+          result.teMarks === null
+            ? "incomplete"
+            : result.aPlusAchieved
+              ? "achieved"
+              : "not-achieved";
+        const doubleAPlusStatus = result.doubleAPlusStatus;
+        const requirement = (value: number | null, achieved: boolean) =>
+          result.teMarks === null
+            ? "Not entered"
+            : achieved
+              ? "0"
+              : value === null
+                ? "—"
+                : formatNumber(value, decimals);
+        const statusCard = (
+          title: string,
+          threshold: number,
+          status: string,
+          label: string,
+          required: number | null,
+          achieved: boolean,
+        ) => (
+          <div
+            className={`rounded-lg border p-4 h-full space-y-1 ${statusClasses[profileStatusTone(status)]}`}
+          >
+            <p className="font-medium">{title}</p>
+            <p>Threshold: {threshold} TE marks</p>
+            <p>Status: {label}</p>
+            <p>Required (TE marks): {requirement(required, achieved)}</p>
+          </div>
+        );
+        return (
+          <section key={exam.id} className="card p-5 space-y-5">
+            <div>
+              <h2 className="font-semibold">Plus One Result — {exam.name}</h2>
+              <p className="text-sm text-gray-500">
+                {exam.date || "Date not entered"}
+              </p>
+            </div>
+            <dl className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+              <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-3">
+                <dt>CE marks</dt>
+                <dd className="font-medium mt-1">
+                  {mark.ceMarks ?? "Not entered"} / {config.plusOneMaxCE}
+                </dd>
+              </div>
+              <div className={`rounded-lg border p-3 ${result.teBelowDoublePassThreshold ? statusClasses.danger : 'bg-gray-50 dark:bg-gray-800 border-transparent'}`}>
+                <dt>TE marks</dt>
+                <dd className="font-medium mt-1">
+                  {mark.teMarks ?? "Not entered"} / {config.plusOneMaxTE}
+                </dd>
+              </div>
+              <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-3">
+                <dt>Total marks</dt>
+                <dd className="font-medium mt-1">
+                  {result.total === null
+                    ? "—"
+                    : formatNumber(result.total, decimals)}{" "}
+                  / {config.plusOneMaxTotal}
+                </dd>
+              </div>
+              <div className={`rounded-lg border p-3 ${result.teBelowDoublePassThreshold ? statusClasses.danger : 'bg-gray-50 dark:bg-gray-800 border-transparent'}`}>
+                <dt>TE percentage</dt>
+                <dd className="font-medium mt-1">
+                  {result.tePercentage === null
+                    ? "—"
+                    : formatPercent(result.tePercentage, decimals)}
+                </dd>
+              </div>
+              <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-3">
+                <dt>Total percentage</dt>
+                <dd className="font-medium mt-1">
+                  {result.percentage === null
+                    ? "—"
+                    : formatPercent(result.percentage, decimals)}
+                </dd>
+              </div>
+            </dl>
+            <div className="grid md:grid-cols-3 gap-4 text-sm">
+              {statusCard(
+                "Double Pass",
+                config.doublePassRequiredPercent,
+                doubleStatus,
+                doubleStatus === "achieved"
+                  ? "Achieved"
+                  : doubleStatus === "impossible"
+                    ? "Impossible"
+                    : doubleStatus === "incomplete"
+                      ? "Not entered"
+                      : doubleStatus === "disabled"
+                        ? "Disabled"
+                        : "Not achieved",
+                result.marksRequiredForDoublePass,
+                result.doublePass,
+              )}
+              {statusCard(
+                "A+",
+                config.aPlusThreshold,
+                aPlusStatus,
+                aPlusStatus === "achieved"
+                  ? "Achieved"
+                  : aPlusStatus === "incomplete"
+                    ? "Not entered"
+                    : "Not achieved",
+                result.marksRequiredForAPlus,
+                result.aPlusAchieved,
+              )}
+              {statusCard(
+                "Double A+",
+                config.doubleAPlusThreshold,
+                doubleAPlusStatus,
+                doubleAPlusStatus === "achieved"
+                  ? "Achieved"
+                  : doubleAPlusStatus === "feasible"
+                    ? "Feasible"
+                  : doubleAPlusStatus === "incomplete"
+                    ? "Not entered"
+                    : "Not eligible",
+                result.marksRequiredForDoubleAPlus,
+                result.doubleAPlusAchieved,
+              )}
+            </div>
+            <p className="text-xs text-gray-500">
+              Requirements use TE marks only. CE and grace marks are not
+              included.
+            </p>
+          </section>
+        );
+      })}
+      <section className="card overflow-hidden">
+        <div className="p-5">
+          <h2 className="font-semibold">Combined analysis</h2>
+        </div>
+        {combined.length === 0 ? (
+          <p className="px-5 pb-5 text-sm text-gray-500">
+            No saved combined analyses for this class.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th>Analysis</th>
+                  <th>Included exams</th>
+                  <th>Obtained</th>
+                  <th>Maximum</th>
+                  <th>Percentage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {combined.map((analysis) => {
+                  const included = regular.filter((exam) =>
+                    analysis.examIds.includes(exam.id),
+                  );
+                  const result = calcCombinedPercentage(
+                    included.map((exam) => ({
+                      obtained:
+                        marks.find(
+                          (entry) =>
+                            entry.examId === exam.id &&
+                            entry.studentId === student.id,
+                        )?.marks ?? null,
+                      maxMarks: exam.maxMarks,
+                    })),
+                  );
+                  return (
+                    <tr key={analysis.id} className="border-t">
+                      <td>{analysis.name}</td>
+                      <td>
+                        {included.map((exam) => exam.name).join(", ") ||
+                          "No current exams"}
+                      </td>
+                      <td>{result.combinedObtained}</td>
+                      <td>{result.combinedMax}</td>
+                      <td>
+                        {result.combinedPercentage === null
+                          ? "—"
+                          : formatPercent(result.combinedPercentage, decimals)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+      <section className="card overflow-hidden">
+        <div className="p-5">
+          <h2 className="font-semibold">Assignments</h2>
+          <p className="text-sm text-gray-500">
+            {submitted}/{assignments.length} submitted
+          </p>
+        </div>
+        {assignments.length === 0 ? (
+          <p className="px-5 pb-5 text-sm text-gray-500">
+            No assignments for this class.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th>Assignment</th>
+                  <th>Due date</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {assignments.map((assignment) => (
+                  <tr key={assignment.id} className="border-t">
+                    <td>{assignment.title}</td>
+                    <td>{assignment.dueDate || "—"}</td>
+                    <td>
+                      {statusFor(assignment.id) ? (
+                        <span className="inline-flex gap-1 items-center text-success-700">
+                          <CheckCircle2 className="w-4 h-4" /> Submitted
+                        </span>
+                      ) : (
+                        "Not submitted"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+      <section className="card overflow-hidden">
+        <div className="p-5">
+          <h2 className="font-semibold">Grace marks</h2>
+          <p className="text-sm text-gray-500">
+            Informational only; excluded from all results and requirements.
+          </p>
+        </div>
+        {grace.length === 0 ? (
+          <p className="px-5 pb-5 text-sm text-gray-500">
+            No grace marks recorded.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Category</th>
+                  <th>Date</th>
+                  <th>Marks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {grace.map((entry) => (
+                  <tr key={entry.id} className="border-t">
+                    <td>{entry.title}</td>
+                    <td>{entry.category}</td>
+                    <td>{entry.date || "—"}</td>
+                    <td>{entry.marks}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  );
 }

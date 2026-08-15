@@ -49,6 +49,10 @@ export interface PlusOneResult {
   marksRequiredForDoubleAPlus: number | null;
   isImpossible: boolean;
   isIncomplete: boolean;
+  /** TE-only display state shared by reports and the student profile. */
+  teBelowDoublePassThreshold: boolean;
+  /** TE-only feasibility state; remaining marks are compared to the configured Max TE. */
+  doubleAPlusStatus: 'achieved' | 'feasible' | 'not-eligible' | 'incomplete';
 }
 
 export function calcPlusOneResult(
@@ -108,6 +112,8 @@ export function calcPlusOneResult(
   // Double A+ is a TE-only target across this and the next TE examination.
   const doubleAPlusAchieved = hasTE && te >= doubleAPlusThreshold;
   const marksRequiredForDoubleAPlus = hasTE ? Math.max(0, doubleAPlusThreshold - te) : null;
+  const teBelowDoublePassThreshold = settings.doublePassEnabled && hasTE && te < requiredDoublePassTE;
+  const doubleAPlusStatus = !hasTE ? 'incomplete' : marksRequiredForDoubleAPlus === 0 ? 'achieved' : (marksRequiredForDoubleAPlus ?? 0) <= maxTE ? 'feasible' : 'not-eligible';
 
   return {
     teMarks,
@@ -124,6 +130,8 @@ export function calcPlusOneResult(
     marksRequiredForDoubleAPlus,
     isImpossible,
     isIncomplete,
+    teBelowDoublePassThreshold,
+    doubleAPlusStatus,
   };
 }
 
