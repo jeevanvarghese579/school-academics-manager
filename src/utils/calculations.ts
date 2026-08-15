@@ -77,13 +77,14 @@ export function calcPlusOneResult(
   const tePercentage = teMarks === null || maxTE <= 0 ? null : (teMarks / maxTE) * 100;
 
   const passed = !isIncomplete && te >= requiredTE && total >= requiredTotal;
-  const doublePass = settings.doublePassEnabled && !isIncomplete && te >= requiredDoublePassTE;
+  const hasTE = teMarks !== null;
+  const doublePass = settings.doublePassEnabled && hasTE && te >= requiredDoublePassTE;
 
   // Marks required for double pass
   let marksRequiredForDoublePass: number | null = null;
   let isImpossible = false;
 
-  if (!isIncomplete) {
+  if (hasTE) {
     if (doublePass) {
       marksRequiredForDoublePass = 0;
     } else {
@@ -95,24 +96,18 @@ export function calcPlusOneResult(
 
   // Marks required for A+
   let marksRequiredForAPlus: number | null = null;
-  if (!isIncomplete && percentage !== null) {
-    if (total >= aPlusThreshold) {
+  if (hasTE) {
+    if (te >= aPlusThreshold) {
       marksRequiredForAPlus = 0;
     } else {
-      const deficit = aPlusThreshold - total;
-      if (deficit > maxTotal - total && maxTotal - total >= 0) {
-        // impossible
-        marksRequiredForAPlus = deficit;
-      } else {
-        marksRequiredForAPlus = Math.max(0, deficit);
-      }
+      marksRequiredForAPlus = Math.max(0, aPlusThreshold - te);
     }
   }
 
-  const aPlusAchieved = !isIncomplete && total >= aPlusThreshold;
-  // Double A+ is a TE-only target; CE remains part of normal Plus One totals only.
-  const doubleAPlusAchieved = teMarks !== null && te >= doubleAPlusThreshold;
-  const marksRequiredForDoubleAPlus = teMarks === null ? null : Math.max(0, doubleAPlusThreshold - te);
+  const aPlusAchieved = hasTE && te >= aPlusThreshold;
+  // Double A+ is a TE-only target across this and the next TE examination.
+  const doubleAPlusAchieved = hasTE && te >= doubleAPlusThreshold;
+  const marksRequiredForDoubleAPlus = hasTE ? Math.max(0, doubleAPlusThreshold - te) : null;
 
   return {
     teMarks,

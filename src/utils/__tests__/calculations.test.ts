@@ -163,26 +163,26 @@ describe('calcPlusOneResult', () => {
     expect(r.marksRequiredForDoublePass).not.toBeNull();
   });
 
-  it('shows 0 marks required for A+ when already achieved', () => {
-    const r = calcPlusOneResult(75, 18, mockSettings);
-    // total=93, percentage=93 >= 90
+  it('shows 0 marks required for A+ when the TE target is achieved', () => {
+    const r = calcPlusOneResult(90, 0, mockSettings);
     expect(r.aPlusAchieved).toBe(true);
     expect(r.marksRequiredForAPlus).toBe(0);
   });
 
-  it('calculates marks required for A+', () => {
-    const r = calcPlusOneResult(60, 10, mockSettings);
-    // total=70, need 90 for A+, deficit=20
+  it('calculates A+ required from TE marks only', () => {
+    const r = calcPlusOneResult(60, 20, mockSettings);
+    // TE=60, A+ TE target=90, deficit=30; CE must not reduce it.
     expect(r.aPlusAchieved).toBe(false);
-    expect(r.marksRequiredForAPlus).toBe(20);
+    expect(r.marksRequiredForAPlus).toBe(30);
   });
 
-  it('treats A+ and Double A+ thresholds as marks, not percentages', () => {
-    const r = calcPlusOneResult(70, 15, { ...mockSettings, aPlusThreshold: 88, doubleAPlusThreshold: 92 });
+  it('uses distinct TE thresholds for A+ and Double A+', () => {
+    const r = calcPlusOneResult(12, 20, { ...mockSettings, doublePassRequiredPercent: 36, aPlusThreshold: 54, doubleAPlusThreshold: 108 });
     expect(r.aPlusAchieved).toBe(false);
-    expect(r.marksRequiredForAPlus).toBe(3);
+    expect(r.marksRequiredForDoublePass).toBe(24);
+    expect(r.marksRequiredForAPlus).toBe(42);
     expect(r.doubleAPlusAchieved).toBe(false);
-    expect(r.marksRequiredForDoubleAPlus).toBe(22);
+    expect(r.marksRequiredForDoubleAPlus).toBe(96);
   });
 
   it('reports Double A+ achieved with zero remaining TE marks', () => {
@@ -200,11 +200,11 @@ describe('calcPlusOneResult', () => {
     expect(lowCe.marksRequiredForDoubleAPlus).toBe(highCe.marksRequiredForDoubleAPlus);
   });
 
-  it('keeps required-mark values incomplete until both Plus One marks exist', () => {
+  it('uses TE requirements even when CE is not entered', () => {
     const r = calcPlusOneResult(60, null, mockSettings);
     expect(r.tePercentage).toBe(75);
-    expect(r.marksRequiredForDoublePass).toBeNull();
-    expect(r.marksRequiredForAPlus).toBeNull();
+    expect(r.marksRequiredForDoublePass).toBe(0);
+    expect(r.marksRequiredForAPlus).toBe(30);
   });
 
   it('does not calculate Double Pass when TE marks are missing', () => {
