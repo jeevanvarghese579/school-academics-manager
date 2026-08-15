@@ -33,7 +33,7 @@ import {
   calcCombinedPercentage,
   calcPercentage,
   calcPlusOneResult,
-  formatNumber,
+  formatMark,
   formatPercent,
 } from "@/utils/calculations";
 import {
@@ -303,8 +303,8 @@ export function StudentProfile() {
                     <tr key={exam.id} className="border-t">
                       <td>{exam.name}</td>
                       <td>{exam.date || "—"}</td>
-                      <td>{obtained ?? "Not entered"}</td>
-                      <td>{exam.maxMarks}</td>
+                      <td>{obtained === null ? "Not entered" : formatMark(obtained)}</td>
+                      <td>{formatMark(exam.maxMarks)}</td>
                       <td>
                         {percentage === null
                           ? "—"
@@ -348,7 +348,7 @@ export function StudentProfile() {
               ? "0"
               : value === null
                 ? "—"
-                : formatNumber(value, decimals);
+                : formatMark(value);
         const statusCard = (
           title: string,
           threshold: number,
@@ -361,7 +361,7 @@ export function StudentProfile() {
             className={`rounded-lg border p-4 h-full space-y-1 ${statusClasses[profileStatusTone(status)]}`}
           >
             <p className="font-medium">{title}</p>
-            <p>Threshold: {threshold} TE marks</p>
+            <p>Threshold: {formatMark(threshold)} TE marks</p>
             <p>Status: {label}</p>
             <p>Required (TE marks): {requirement(required, achieved)}</p>
           </div>
@@ -378,13 +378,13 @@ export function StudentProfile() {
               <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-3">
                 <dt>CE marks</dt>
                 <dd className="font-medium mt-1">
-                  {mark.ceMarks ?? "Not entered"} / {config.plusOneMaxCE}
+                  {mark.ceMarks === null ? "Not entered" : formatMark(mark.ceMarks)} / {formatMark(config.plusOneMaxCE)}
                 </dd>
               </div>
               <div className={`rounded-lg border p-3 ${result.teBelowDoublePassThreshold ? statusClasses.danger : 'bg-gray-50 dark:bg-gray-800 border-transparent'}`}>
                 <dt>TE marks</dt>
                 <dd className="font-medium mt-1">
-                  {mark.teMarks ?? "Not entered"} / {config.plusOneMaxTE}
+                  {mark.teMarks === null ? "Not entered" : formatMark(mark.teMarks)} / {formatMark(config.plusOneMaxTE)}
                 </dd>
               </div>
               <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-3">
@@ -392,8 +392,8 @@ export function StudentProfile() {
                 <dd className="font-medium mt-1">
                   {result.total === null
                     ? "—"
-                    : formatNumber(result.total, decimals)}{" "}
-                  / {config.plusOneMaxTotal}
+                    : formatMark(result.total)}{" "}
+                  / {formatMark(config.plusOneMaxTotal)}
                 </dd>
               </div>
               <div className={`rounded-lg border p-3 ${result.teBelowDoublePassThreshold ? statusClasses.danger : 'bg-gray-50 dark:bg-gray-800 border-transparent'}`}>

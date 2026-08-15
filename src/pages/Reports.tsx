@@ -19,7 +19,7 @@ import { DEFAULT_SETTINGS } from "@/types";
 import {
   calcCombinedPercentage,
   calcPlusOneResult,
-  formatNumber,
+  formatMark,
   formatPercent,
 } from "@/utils/calculations";
 import { classReportExamSchema } from "@/utils/reportColumns";
@@ -319,7 +319,7 @@ function ClassReport({
         ? "Not entered"
         : achieved
           ? "0"
-          : formatNumber(n ?? 0, dec);
+          : formatMark(n ?? 0);
   const items = [
     ...(hasPlusOne
       ? ([
@@ -439,7 +439,7 @@ function ClassReport({
                   {regular
                     .filter((exam) => visible(exam.id))
                     .map((exam) => (
-                      <td key={exam.id}>{row.examValues[exam.id] ?? "—"}</td>
+                      <td key={exam.id}>{row.examValues[exam.id] === null ? "—" : formatMark(row.examValues[exam.id]!)}</td>
                     ))}
                   {combined
                     .filter((analysis) => visible(`combined:${analysis.id}`))

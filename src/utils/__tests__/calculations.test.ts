@@ -3,6 +3,7 @@ import {
   calcPercentage,
   calcCombinedPercentage,
   calcPlusOneResult,
+  formatMark,
   roundTo,
   formatPercent,
 } from '@/utils/calculations';
@@ -240,5 +241,11 @@ describe('roundTo and formatPercent', () => {
   it('formats percentage string', () => {
     expect(formatPercent(50, 2)).toBe('50.00%');
     expect(formatPercent(33.333, 1)).toBe('33.3%');
+  });
+
+  it('formats marks without unnecessary trailing zeroes', () => {
+    expect(formatMark(9)).toBe('9');
+    expect(formatMark(9.5)).toBe('9.5');
+    expect(formatMark(9.25)).toBe('9.25');
   });
 });

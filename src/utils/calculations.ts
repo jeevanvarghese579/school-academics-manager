@@ -13,6 +13,11 @@ export function formatNumber(value: number, decimals = 2): string {
   return roundTo(value, decimals).toFixed(decimals);
 }
 
+/** Marks are numeric values, not percentages: retain meaningful fractions but never pad with zeroes. */
+export function formatMark(value: number, decimals = 4): string {
+  return String(roundTo(value, decimals));
+}
+
 // Percentage for a single exam
 export function calcPercentage(obtained: number | null, maxMarks: number): number | null {
   if (obtained === null || maxMarks <= 0) return null;

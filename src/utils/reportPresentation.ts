@@ -1,4 +1,5 @@
 import type { Exam, Student } from '@/types';
+import { formatMark } from '@/utils/calculations';
 
 export function matchesStudentSearch(student: Student, query: string) {
   const normalized = query.trim().toLocaleLowerCase();
@@ -7,5 +8,5 @@ export function matchesStudentSearch(student: Student, query: string) {
 }
 
 export function normalExamHeader(exam: Pick<Exam, 'name' | 'maxMarks'>) {
-  return { name: exam.name, maximum: `Max ${exam.maxMarks}` };
+  return { name: exam.name, maximum: `Max ${formatMark(exam.maxMarks)}` };
 }
