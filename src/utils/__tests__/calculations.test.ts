@@ -182,13 +182,22 @@ describe('calcPlusOneResult', () => {
     expect(r.aPlusAchieved).toBe(false);
     expect(r.marksRequiredForAPlus).toBe(3);
     expect(r.doubleAPlusAchieved).toBe(false);
-    expect(r.marksRequiredForDoubleAPlus).toBe(7);
+    expect(r.marksRequiredForDoubleAPlus).toBe(22);
   });
 
-  it('reports Double A+ achieved with zero remaining marks', () => {
-    const r = calcPlusOneResult(75, 20, mockSettings);
+  it('reports Double A+ achieved with zero remaining TE marks', () => {
+    const r = calcPlusOneResult(95, 0, mockSettings);
     expect(r.doubleAPlusAchieved).toBe(true);
     expect(r.marksRequiredForDoubleAPlus).toBe(0);
+  });
+
+  it('does not let CE marks change Double Pass or Double A+ results', () => {
+    const lowCe = calcPlusOneResult(40, 0, { ...mockSettings, doublePassRequiredPercent: 45, doubleAPlusThreshold: 50 });
+    const highCe = calcPlusOneResult(40, 20, { ...mockSettings, doublePassRequiredPercent: 45, doubleAPlusThreshold: 50 });
+    expect(lowCe.doublePass).toBe(highCe.doublePass);
+    expect(lowCe.marksRequiredForDoublePass).toBe(highCe.marksRequiredForDoublePass);
+    expect(lowCe.doubleAPlusAchieved).toBe(highCe.doubleAPlusAchieved);
+    expect(lowCe.marksRequiredForDoubleAPlus).toBe(highCe.marksRequiredForDoubleAPlus);
   });
 
   it('keeps required-mark values incomplete until both Plus One marks exist', () => {

@@ -336,7 +336,7 @@ export class IndexedDbRepository implements DataRepository {
         this.db.combinedAnalyses.toArray(),
       ]);
     return {
-      version: '1.0.8',
+      version: '1.0.9',
       exportedAt: now(),
       settings: settings[0] ?? null,
       classes,

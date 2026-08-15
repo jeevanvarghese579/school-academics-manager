@@ -110,8 +110,9 @@ export function calcPlusOneResult(
   }
 
   const aPlusAchieved = !isIncomplete && total >= aPlusThreshold;
-  const doubleAPlusAchieved = !isIncomplete && total >= doubleAPlusThreshold;
-  const marksRequiredForDoubleAPlus = isIncomplete ? null : Math.max(0, doubleAPlusThreshold - total);
+  // Double A+ is a TE-only target; CE remains part of normal Plus One totals only.
+  const doubleAPlusAchieved = teMarks !== null && te >= doubleAPlusThreshold;
+  const marksRequiredForDoubleAPlus = teMarks === null ? null : Math.max(0, doubleAPlusThreshold - te);
 
   return {
     teMarks,

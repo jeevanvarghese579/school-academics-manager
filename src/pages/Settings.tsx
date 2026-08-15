@@ -8,7 +8,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { UserSettings, ClassRoom } from '@/types';
 import { downloadFile } from '@/utils/csv';
 
-const APP_VERSION = '1.0.8';
+const APP_VERSION = '1.0.9';
 
 export function Settings() {
   const { repo, mode, signOut, exitOfflineMode } = useApp();
