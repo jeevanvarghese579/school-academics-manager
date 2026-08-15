@@ -8,7 +8,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { UserSettings, ClassRoom } from '@/types';
 import { downloadFile } from '@/utils/csv';
 
-const APP_VERSION = '1.0.6';
+const APP_VERSION = '1.0.7';
 
 export function Settings() {
   const { repo, mode, signOut, exitOfflineMode } = useApp();
@@ -157,8 +157,12 @@ export function Settings() {
             </div>
           </div>
           <div>
-            <label className="label">A+ Threshold (%)</label>
-            <input type="number" className="input" value={settings.aPlusThreshold} onChange={(e) => update({ aPlusThreshold: parseFloat(e.target.value) || 0 })} min="0" max="100" />
+            <label className="label">A+ Threshold (Marks)</label>
+            <input type="number" className="input" value={settings.aPlusThreshold} onChange={(e) => update({ aPlusThreshold: parseFloat(e.target.value) || 0 })} min="0" />
+          </div>
+          <div>
+            <label className="label">Double A+ Threshold (Marks)</label>
+            <input type="number" className="input" value={settings.doubleAPlusThreshold} onChange={(e) => update({ doubleAPlusThreshold: parseFloat(e.target.value) || 0 })} min="0" />
           </div>
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Enable Double Pass Calculation</label>

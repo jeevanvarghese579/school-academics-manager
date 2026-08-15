@@ -15,6 +15,7 @@ const mockSettings = {
   requiredTotalPercent: 30,
   doublePassEnabled: true,
   aPlusThreshold: 90,
+  doubleAPlusThreshold: 95,
 };
 
 describe('calcPercentage', () => {
@@ -174,6 +175,20 @@ describe('calcPlusOneResult', () => {
     // total=70, need 90 for A+, deficit=20
     expect(r.aPlusAchieved).toBe(false);
     expect(r.marksRequiredForAPlus).toBe(20);
+  });
+
+  it('treats A+ and Double A+ thresholds as marks, not percentages', () => {
+    const r = calcPlusOneResult(70, 15, { ...mockSettings, aPlusThreshold: 88, doubleAPlusThreshold: 92 });
+    expect(r.aPlusAchieved).toBe(false);
+    expect(r.marksRequiredForAPlus).toBe(3);
+    expect(r.doubleAPlusAchieved).toBe(false);
+    expect(r.marksRequiredForDoubleAPlus).toBe(7);
+  });
+
+  it('reports Double A+ achieved with zero remaining marks', () => {
+    const r = calcPlusOneResult(75, 20, mockSettings);
+    expect(r.doubleAPlusAchieved).toBe(true);
+    expect(r.marksRequiredForDoubleAPlus).toBe(0);
   });
 
   it('keeps required-mark values incomplete until both Plus One marks exist', () => {

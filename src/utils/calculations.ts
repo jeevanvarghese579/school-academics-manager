@@ -45,6 +45,8 @@ export interface PlusOneResult {
   marksRequiredForDoublePass: number | null;
   marksRequiredForAPlus: number | null;
   aPlusAchieved: boolean;
+  doubleAPlusAchieved: boolean;
+  marksRequiredForDoubleAPlus: number | null;
   isImpossible: boolean;
   isIncomplete: boolean;
 }
@@ -54,7 +56,7 @@ export function calcPlusOneResult(
   ceMarks: number | null,
   settings: Pick<
     UserSettings,
-    'plusOneMaxTE' | 'plusOneMaxCE' | 'plusOneMaxTotal' | 'requiredTEPercent' | 'requiredTotalPercent' | 'doublePassEnabled' | 'aPlusThreshold'
+    'plusOneMaxTE' | 'plusOneMaxCE' | 'plusOneMaxTotal' | 'requiredTEPercent' | 'requiredTotalPercent' | 'doublePassEnabled' | 'aPlusThreshold' | 'doubleAPlusThreshold'
   > & Partial<Pick<UserSettings, 'doublePassRequiredPercent'>>,
 ): PlusOneResult {
   const maxTE = settings.plusOneMaxTE;
@@ -64,6 +66,7 @@ export function calcPlusOneResult(
   const requiredTotal = (settings.requiredTotalPercent / 100) * maxTotal;
   const requiredDoublePassTE = ((settings.doublePassRequiredPercent ?? settings.requiredTEPercent) / 100) * maxTE;
   const aPlusThreshold = settings.aPlusThreshold;
+  const doubleAPlusThreshold = settings.doubleAPlusThreshold;
 
   const isIncomplete = teMarks === null || ceMarks === null;
   const te = teMarks ?? 0;
@@ -92,11 +95,10 @@ export function calcPlusOneResult(
   // Marks required for A+
   let marksRequiredForAPlus: number | null = null;
   if (!isIncomplete && percentage !== null) {
-    const aPlusTotal = (aPlusThreshold / 100) * maxTotal;
-    if (percentage >= aPlusThreshold) {
+    if (total >= aPlusThreshold) {
       marksRequiredForAPlus = 0;
     } else {
-      const deficit = aPlusTotal - total;
+      const deficit = aPlusThreshold - total;
       if (deficit > maxTotal - total && maxTotal - total >= 0) {
         // impossible
         marksRequiredForAPlus = deficit;
@@ -106,7 +108,9 @@ export function calcPlusOneResult(
     }
   }
 
-  const aPlusAchieved = !isIncomplete && percentage !== null && percentage >= aPlusThreshold;
+  const aPlusAchieved = !isIncomplete && total >= aPlusThreshold;
+  const doubleAPlusAchieved = !isIncomplete && total >= doubleAPlusThreshold;
+  const marksRequiredForDoubleAPlus = isIncomplete ? null : Math.max(0, doubleAPlusThreshold - total);
 
   return {
     teMarks,
@@ -119,6 +123,8 @@ export function calcPlusOneResult(
     marksRequiredForDoublePass,
     marksRequiredForAPlus,
     aPlusAchieved,
+    doubleAPlusAchieved,
+    marksRequiredForDoubleAPlus,
     isImpossible,
     isIncomplete,
   };

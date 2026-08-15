@@ -24,6 +24,7 @@ export interface UserSettings extends BaseEntity {
   doublePassRequiredPercent: number;
   doublePassEnabled: boolean;
   aPlusThreshold: number;
+  doubleAPlusThreshold: number;
   allowMarksOverMax: boolean;
 }
 
@@ -132,5 +133,6 @@ export const DEFAULT_SETTINGS: Omit<UserSettings, 'id' | 'createdAt' | 'updatedA
   doublePassRequiredPercent: 30,
   doublePassEnabled: true,
   aPlusThreshold: 90,
+  doubleAPlusThreshold: 95,
   allowMarksOverMax: false,
 };
