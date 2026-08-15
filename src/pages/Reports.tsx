@@ -24,7 +24,7 @@ import {
 } from "@/utils/calculations";
 import { classReportExamSchema } from "@/utils/reportColumns";
 import { matchesStudentSearch, normalExamHeader } from "@/utils/reportPresentation";
-import { normalExamMarkTone } from "@/utils/reportMarkStyle";
+import { normalExamMarkTone, plusOneTEPercentageTone } from "@/utils/reportMarkStyle";
 
 type Direction = "asc" | "desc";
 
@@ -408,8 +408,8 @@ function ClassReport({
                       {!row.po
                         ? "—"
                         : row.po.teMarks === null
-                          ? "Not entered"
-                          : formatPercent(row.po.tePercentage!, dec)}
+                          ? <span className="text-gray-400">—</span>
+                          : <span className={plusOneTEPercentageTone(row.po.tePercentage, config.requiredTEPercent) === "failed" ? "inline-block rounded px-2 py-0.5 bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-300" : ""}>{formatPercent(row.po.tePercentage!, dec)}</span>}
                     </td>
                   )}
                   {hasPlusOne && visible("double") && (
