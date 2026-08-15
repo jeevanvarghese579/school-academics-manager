@@ -8,7 +8,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { UserSettings, ClassRoom } from '@/types';
 import { downloadFile } from '@/utils/csv';
 
-const APP_VERSION = '1.0.5';
+const APP_VERSION = '1.0.6';
 
 export function Settings() {
   const { repo, mode, signOut, exitOfflineMode } = useApp();
@@ -110,7 +110,7 @@ export function Settings() {
             </div>
           </div>
           <div>
-            <label className="label">Percentage Required for Double Pass</label>
+            <label className="label">TE Percentage Required for Double Pass</label>
             <input type="number" className="input" value={settings.doublePassRequiredPercent} onChange={(e) => update({ doublePassRequiredPercent: parseFloat(e.target.value) || 0 })} min="0" max="100" />
           </div>
           <div className="flex items-center justify-between">

@@ -62,7 +62,7 @@ export function calcPlusOneResult(
   const maxTotal = settings.plusOneMaxTotal || maxTE + maxCE;
   const requiredTE = (settings.requiredTEPercent / 100) * maxTE;
   const requiredTotal = (settings.requiredTotalPercent / 100) * maxTotal;
-  const requiredDoublePassTotal = ((settings.doublePassRequiredPercent ?? settings.requiredTotalPercent) / 100) * maxTotal;
+  const requiredDoublePassTE = ((settings.doublePassRequiredPercent ?? settings.requiredTEPercent) / 100) * maxTE;
   const aPlusThreshold = settings.aPlusThreshold;
 
   const isIncomplete = teMarks === null || ceMarks === null;
@@ -73,25 +73,19 @@ export function calcPlusOneResult(
   const tePercentage = teMarks === null || maxTE <= 0 ? null : (teMarks / maxTE) * 100;
 
   const passed = !isIncomplete && te >= requiredTE && total >= requiredTotal;
-  const doublePass = settings.doublePassEnabled && !isIncomplete && total >= requiredDoublePassTotal;
+  const doublePass = settings.doublePassEnabled && !isIncomplete && te >= requiredDoublePassTE;
 
   // Marks required for double pass
   let marksRequiredForDoublePass: number | null = null;
   let isImpossible = false;
 
   if (!isIncomplete) {
-    const remainingMax = maxTotal - total;
     if (doublePass) {
       marksRequiredForDoublePass = 0;
     } else {
-      // Need to meet both TE requirement and total requirement
-      const required = Math.max(0, requiredDoublePassTotal - total);
-      if (required > remainingMax && remainingMax >= 0) {
-        isImpossible = true;
-        marksRequiredForDoublePass = required;
-      } else {
-        marksRequiredForDoublePass = required;
-      }
+      const required = Math.max(0, requiredDoublePassTE - te);
+      isImpossible = required > maxTE - te;
+      marksRequiredForDoublePass = required;
     }
   }
 

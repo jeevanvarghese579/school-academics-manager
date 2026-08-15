@@ -121,9 +121,17 @@ describe('calcPlusOneResult', () => {
   });
 
   it('calculates marks required for double pass', () => {
-    // TE=20 (need 24), CE=5, total=25 (need 30)
-    const r = calcPlusOneResult(20, 5, mockSettings);
-    expect(r.marksRequiredForDoublePass).toBe(5);
+    // Double pass is TE-only: configured 30% of 80 is 24, so TE 20 needs 4.
+    const r = calcPlusOneResult(20, 20, mockSettings);
+    expect(r.doublePass).toBe(false);
+    expect(r.marksRequiredForDoublePass).toBe(4);
+  });
+
+  it('uses the configured Double Pass TE percentage instead of total marks', () => {
+    const r = calcPlusOneResult(40, 0, { ...mockSettings, doublePassRequiredPercent: 60 });
+    // 60% of max TE 80 is 48, despite the total mark being above 30% of 100.
+    expect(r.doublePass).toBe(false);
+    expect(r.marksRequiredForDoublePass).toBe(8);
   });
 
   it('detects impossible double pass', () => {
