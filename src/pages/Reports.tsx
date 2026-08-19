@@ -18,6 +18,7 @@ import type {
 import { DEFAULT_SETTINGS } from "@/types";
 import {
   calcCombinedPercentage,
+  calcPercentage,
   calcPlusOneResult,
   formatMark,
   formatPercent,
@@ -25,6 +26,7 @@ import {
 import { classReportExamSchema } from "@/utils/reportColumns";
 import { matchesStudentSearch, normalExamHeader } from "@/utils/reportPresentation";
 import { normalExamMarkTone, plusOneTEPercentageTone } from "@/utils/reportMarkStyle";
+import { academicResultSortValue, formatAcademicResult, percentageResultTone, type AcademicResultMode } from "@/utils/reportResultPresentation";
 
 type Direction = "asc" | "desc";
 
@@ -193,6 +195,10 @@ function ClassReport({
     () => new Set((search.get("hidden") ?? "").split(",").filter(Boolean)),
   );
   const [studentSearch, setStudentSearch] = useState(search.get("studentSearch") ?? "");
+  const [resultMode, setResultMode] = useState<AcademicResultMode>(() => {
+    try { return sessionStorage.getItem("classReportResultMode") === "marks" ? "marks" : "percentage"; }
+    catch { return "percentage"; }
+  });
   const config = settings ?? DEFAULT_SETTINGS;
   const dec = settings?.decimalPlaces ?? 2;
   useEffect(() => {
@@ -203,6 +209,9 @@ function ClassReport({
       studentSearch: studentSearch || null,
     });
   }, [sort, dir, hidden, studentSearch]);
+  useEffect(() => {
+    try { sessionStorage.setItem("classReportResultMode", resultMode); } catch { /* optional */ }
+  }, [resultMode]);
   const visible = (key: string) => !hidden.has(key);
   const toggle = (key: string) => {
     setHidden((old) => {
@@ -275,14 +284,14 @@ function ClassReport({
     sort === "roll"
       ? row.student.rollNumber
       : sort === "plus"
-        ? (row.po?.tePercentage ?? -1)
+        ? academicResultSortValue(resultMode, row.po?.teMarks ?? null, row.po?.tePercentage ?? null)
         : sort === "assign"
           ? row.submitted
           : sort === "grace"
             ? row.grace
             : sort.startsWith("combined:")
-              ? (row.combinedValues[sort.slice(9)]?.combinedPercentage ?? -1)
-              : (row.examValues[sort] ?? -1);
+              ? academicResultSortValue(resultMode, row.combinedValues[sort.slice(9)]?.combinedObtained ?? null, row.combinedValues[sort.slice(9)]?.combinedPercentage ?? null)
+              : academicResultSortValue(resultMode, row.examValues[sort] ?? null, regular.find((exam) => exam.id === sort) ? calcPercentage(row.examValues[sort] ?? null, regular.find((exam) => exam.id === sort)!.maxMarks) : null);
   const shown = rows.filter((row) => matchesStudentSearch(row.student, studentSearch)).sort((a, b) => {
     const av = value(a);
     const bv = value(b);
@@ -326,7 +335,7 @@ function ClassReport({
   const items = [
     ...(hasPlusOne
       ? ([
-          ["plus", "Plus One TE %"],
+          ["plus", "Plus One TE"],
           ["double", "Double Pass Required"],
           ["aplus", "A+ Required"],
           ["double-aplus", "Double A+ Required"],
@@ -342,6 +351,11 @@ function ClassReport({
   ];
   return (
     <div className="space-y-4">
+      <div className="card p-4 flex items-center gap-2" role="group" aria-label="Academic result display">
+        <span className="text-sm font-medium mr-1">Display results:</span>
+        <button type="button" className={resultMode === "marks" ? "btn-primary" : "btn-secondary"} onClick={() => setResultMode("marks")}>Marks</button>
+        <button type="button" className={resultMode === "percentage" ? "btn-primary" : "btn-secondary"} onClick={() => setResultMode("percentage")}>Percentage</button>
+      </div>
       <div className="card p-5">
         <details>
           <summary className="cursor-pointer text-sm font-medium">
@@ -371,7 +385,7 @@ function ClassReport({
                 {column("name", "Student")}
                 {hasPlusOne &&
                   visible("plus") &&
-                  column("plus", "Plus One TE %")}
+                  column("plus", "Plus One TE")}
                 {hasPlusOne && visible("double") && (
                   <th>Double Pass Required</th>
                 )}
@@ -409,7 +423,7 @@ function ClassReport({
                         ? "—"
                         : row.po.teMarks === null
                           ? <span className="text-gray-400">—</span>
-                          : <span className={plusOneTEPercentageTone(row.po.tePercentage, config.requiredTEPercent) === "failed" ? "inline-block rounded px-2 py-0.5 bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-300" : ""}>{formatPercent(row.po.tePercentage!, dec)}</span>}
+                          : <span className={plusOneTEPercentageTone(row.po.tePercentage, config.requiredTEPercent) === "failed" ? "inline-block rounded px-2 py-0.5 bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-300" : ""}>{formatAcademicResult(resultMode, row.po.teMarks, row.po.tePercentage, dec)}</span>}
                     </td>
                   )}
                   {hasPlusOne && visible("double") && (
@@ -442,18 +456,14 @@ function ClassReport({
                   {regular
                     .filter((exam) => visible(exam.id))
                     .map((exam) => (
-                      <td key={exam.id}><span className={`inline-block rounded px-2 py-0.5 ${markClass(row.examValues[exam.id], exam)}`}>{row.examValues[exam.id] === null ? "—" : formatMark(row.examValues[exam.id]!)}</span></td>
+                      <td key={exam.id}><span className={`inline-block rounded px-2 py-0.5 ${markClass(row.examValues[exam.id], exam)}`}>{formatAcademicResult(resultMode, row.examValues[exam.id], calcPercentage(row.examValues[exam.id], exam.maxMarks), dec)}</span></td>
                     ))}
                   {combined
                     .filter((analysis) => visible(`combined:${analysis.id}`))
                     .map((analysis) => {
                       const result = row.combinedValues[analysis.id];
                       return (
-                        <td key={analysis.id}>
-                          {result.combinedPercentage === null
-                            ? "—"
-                            : formatPercent(result.combinedPercentage, dec)}
-                        </td>
+                        <td key={analysis.id}><span className={percentageResultTone(result.combinedPercentage, config.requiredTEPercent) === "failed" ? "inline-block rounded px-2 py-0.5 bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-300" : ""}>{formatAcademicResult(resultMode, result.combinedObtained, result.combinedPercentage, dec)}</span></td>
                       );
                     })}
                   {visible("assign") && (

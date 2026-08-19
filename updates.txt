@@ -1,0 +1,64 @@
+version 1.0.2
+percentage required for doube pass should be niput by user in settings
+in cobined analysis, two or more exams from exams can be clubbed. in reports, only these clubed in comined anlaysis ssatys cubbed. rest all is seen as a table for class report. each mark is sen for eaxch exams
+plus one result should be included in grpah. the graph is draen in chronological order of exam dartes
+in reports, the studerr are arrange in roll number wise
+in class repots, students can be arranged ascening or descentin on each catery titles. it can also be filtered
+
+the fgrace mark is only mentioned. it should not be added with anything
+
+in plus one exam. CE comes befoer TE. it should be interchagend for site, export , import and blank sheet
+
+
+
+1.0.3
+import/export sectoin should allow importing even if no classes are created
+import shoiuld work onlie mode too
+
+1.0.4
+json import export in import export
+
+1.0.5
+in class report, for plus 1 result, show te% only. show marks required for double pass, marks for full a+ as well with same colour boxes. in exams section, exams should be in chronological order.
+
+1.0.6
+doube pass requiremetn is also based on te. change Full A+ Required to A+ Required
+user can select with row should be seen in reports section class repot
+
+
+107
+change A+ Threshold (%) to A+ Threshold (Marks)
+Add Double A+ Threshold (Marks)
+class shows plus one te % and related fields even though its not enetered. fix it.
+
+108
+cahnge TE Percentage Required for Double Pass to TE Marks Required for Double Pass in settings
+make sure the caluclation are correct
+in report section of clasees whose plus one is not added, the coolumns are presnt. it should not be present if the exam is not added. fix it.
+
+
+109
+do not take account of ce mark for double a+ calculation, double pass calculation
+in reprts, only show marks for which exams are added. a class for which plus marks are not added is still showing those columns. its missing from filter menu, but the columns are present
+in reports, clicking on a student should open up that students individual graph and marks profile
+
+110
+calcualtion fix
+
+111
+column fix plus 1 result
+
+112
+grpah fix
+
+
+
+113
+grpah continuation, arrow marks
+
+
+114
+visual updates on highlights in individual report
+
+115
+reports-percentage/marks view
