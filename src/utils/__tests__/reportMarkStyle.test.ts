@@ -9,9 +9,10 @@ describe('class report mark styling', () => {
     expect(normalExamMarkTone(90, 100, settings)).toBe('aplus');
     expect(normalExamMarkTone(null, 30, settings)).toBe('neutral');
   });
-  it('uses Required TE percentage only for Plus One TE percentage styling', () => {
-    expect(plusOneTEPercentageTone(26.67, 30)).toBe('failed');
-    expect(plusOneTEPercentageTone(30, 30)).toBe('normal');
-    expect(plusOneTEPercentageTone(null, 30)).toBe('neutral');
+  it('uses Required TE percentage for Plus One failure and TE marks for A+', () => {
+    expect(plusOneTEPercentageTone(12, 12 / 60 * 100, { requiredTEPercent: 30, aPlusThreshold: 54 })).toBe('failed');
+    expect(plusOneTEPercentageTone(32, 32 / 60 * 100, { requiredTEPercent: 30, aPlusThreshold: 54 })).toBe('normal');
+    expect(plusOneTEPercentageTone(54, 90, { requiredTEPercent: 30, aPlusThreshold: 54 })).toBe('aplus');
+    expect(plusOneTEPercentageTone(null, null, { requiredTEPercent: 30, aPlusThreshold: 54 })).toBe('neutral');
   });
 });

@@ -60,6 +60,11 @@
 }
 
 /* Print styles */
+@page {
+  size: landscape;
+  margin: 8mm;
+}
+
 @media print {
   .no-print {
     display: none !important;
@@ -75,6 +80,45 @@
   }
   .page-break {
     page-break-after: always;
+  }
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+  main,
+  .md\:ml-64 {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .class-report,
+  .class-report-table,
+  .class-report-scroll {
+    overflow: visible !important;
+    width: 100% !important;
+  }
+  .class-report-table {
+    border: 0 !important;
+  }
+  .class-report table {
+    width: 100% !important;
+    table-layout: auto;
+    font-size: 7pt;
+  }
+  .class-report th,
+  .class-report td {
+    padding: 2px 3px !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+  .class-report thead {
+    display: table-header-group;
+  }
+  .class-report tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
 .print-only {

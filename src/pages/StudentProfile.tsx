@@ -36,6 +36,7 @@ import {
   formatMark,
   formatPercent,
 } from "@/utils/calculations";
+import { academicResultTone } from "@/utils/reportMarkStyle";
 import {
   adjacentStudentIds,
   profileExams,
@@ -120,6 +121,18 @@ export function StudentProfile() {
   }, [repo, id]);
   const config = settings ?? DEFAULT_SETTINGS;
   const decimals = config.decimalPlaces;
+  const resultToneClass = (mark: number | null, percentage: number | null) => ({
+    failed: "text-error-700 dark:text-error-300",
+    aplus: "text-success-700 dark:text-success-300",
+    normal: "",
+    neutral: "text-gray-400",
+  }[academicResultTone(mark, percentage, config)]);
+  const resultCardClass = (mark: number | null, percentage: number | null) => ({
+    failed: statusClasses.danger,
+    aplus: statusClasses.success,
+    normal: "bg-gray-50 dark:bg-gray-800 border-transparent",
+    neutral: statusClasses.neutral,
+  }[academicResultTone(mark, percentage, config)]);
   const ordered = useMemo(
     () => profileExams(exams, student?.classId ?? ""),
     [exams, student],
@@ -303,9 +316,9 @@ export function StudentProfile() {
                     <tr key={exam.id} className="border-t">
                       <td>{exam.name}</td>
                       <td>{exam.date || "—"}</td>
-                      <td>{obtained === null ? "Not entered" : formatMark(obtained)}</td>
+                      <td className={resultToneClass(obtained, percentage)}>{obtained === null ? "Not entered" : formatMark(obtained)}</td>
                       <td>{formatMark(exam.maxMarks)}</td>
-                      <td>
+                      <td className={resultToneClass(obtained, percentage)}>
                         {percentage === null
                           ? "—"
                           : formatPercent(percentage, decimals)}
@@ -381,7 +394,7 @@ export function StudentProfile() {
                   {mark.ceMarks === null ? "Not entered" : formatMark(mark.ceMarks)} / {formatMark(config.plusOneMaxCE)}
                 </dd>
               </div>
-              <div className={`rounded-lg border p-3 ${result.teBelowDoublePassThreshold ? statusClasses.danger : 'bg-gray-50 dark:bg-gray-800 border-transparent'}`}>
+              <div className={`rounded-lg border p-3 ${resultCardClass(mark.teMarks, result.tePercentage)} `}>
                 <dt>TE marks</dt>
                 <dd className="font-medium mt-1">
                   {mark.teMarks === null ? "Not entered" : formatMark(mark.teMarks)} / {formatMark(config.plusOneMaxTE)}
@@ -396,7 +409,7 @@ export function StudentProfile() {
                   / {formatMark(config.plusOneMaxTotal)}
                 </dd>
               </div>
-              <div className={`rounded-lg border p-3 ${result.teBelowDoublePassThreshold ? statusClasses.danger : 'bg-gray-50 dark:bg-gray-800 border-transparent'}`}>
+              <div className={`rounded-lg border p-3 ${resultCardClass(mark.teMarks, result.tePercentage)} `}>
                 <dt>TE percentage</dt>
                 <dd className="font-medium mt-1">
                   {result.tePercentage === null
@@ -507,9 +520,9 @@ export function StudentProfile() {
                         {included.map((exam) => exam.name).join(", ") ||
                           "No current exams"}
                       </td>
-                      <td>{result.combinedObtained}</td>
+                      <td className={resultToneClass(result.combinedObtained, result.combinedPercentage)}>{result.combinedObtained}</td>
                       <td>{result.combinedMax}</td>
-                      <td>
+                      <td className={resultToneClass(result.combinedObtained, result.combinedPercentage)}>
                         {result.combinedPercentage === null
                           ? "—"
                           : formatPercent(result.combinedPercentage, decimals)}

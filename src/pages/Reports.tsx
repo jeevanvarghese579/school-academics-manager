@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { FileBarChart, Printer, Search, X } from "lucide-react";
+import { Download, FileBarChart, Printer, Search, X } from "lucide-react";
+import * as XLSX from "xlsx";
 import { useApp } from "@/context/AppContext";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type {
@@ -25,8 +26,8 @@ import {
 } from "@/utils/calculations";
 import { classReportExamSchema } from "@/utils/reportColumns";
 import { matchesStudentSearch, normalExamHeader } from "@/utils/reportPresentation";
-import { normalExamMarkTone, plusOneTEPercentageTone } from "@/utils/reportMarkStyle";
-import { academicResultSortValue, formatAcademicResult, percentageResultTone, type AcademicResultMode } from "@/utils/reportResultPresentation";
+import { academicResultTone, normalExamMarkTone, plusOneTEPercentageTone } from "@/utils/reportMarkStyle";
+import { academicResultSortValue, formatAcademicResult, type AcademicResultMode } from "@/utils/reportResultPresentation";
 
 type Direction = "asc" | "desc";
 
@@ -109,7 +110,7 @@ export function Reports() {
   const schema = classReportExamSchema(allExams, classId);
   return (
     <div className="space-y-6">
-      <div className="flex justify-between">
+      <div className="flex justify-between no-print">
         <h1 className="text-2xl font-bold">Reports</h1>
         {classId && (
           <button className="btn-primary" onClick={() => window.print()}>
@@ -301,6 +302,46 @@ function ClassReport({
         : Number(av) - Number(bv);
     return dir === "asc" ? compare : -compare;
   });
+  const exportExcel = () => {
+    const headings: string[] = ["Roll", "Student"];
+    const fields: ((row: (typeof rows)[number]) => string | number | null)[] = [
+      (row) => row.student.rollNumber,
+      (row) => row.student.name,
+    ];
+    if (hasPlusOne && visible("plus")) {
+      headings.push("Plus One TE");
+      fields.push((row) => {
+        const percentage = row.po?.tePercentage ?? null;
+        return resultMode === "marks" ? row.po?.teMarks ?? null : percentage === null ? null : percentage / 100;
+      });
+    }
+    if (hasPlusOne && visible("double")) { headings.push("Double Pass Required"); fields.push((row) => row.po?.teMarks === null ? null : row.po?.doublePass ? 0 : row.po?.marksRequiredForDoublePass ?? null); }
+    if (hasPlusOne && visible("aplus")) { headings.push("A+ Required"); fields.push((row) => row.po?.teMarks === null ? null : row.po?.aPlusAchieved ? 0 : row.po?.marksRequiredForAPlus ?? null); }
+    if (hasPlusOne && visible("double-aplus")) { headings.push("Double A+ Required"); fields.push((row) => row.po?.teMarks === null ? null : row.po?.doubleAPlusAchieved ? 0 : row.po?.marksRequiredForDoubleAPlus ?? null); }
+    regular.filter((exam) => visible(exam.id)).forEach((exam) => {
+      headings.push(`${exam.name} (Max ${formatMark(exam.maxMarks)})`);
+      fields.push((row) => {
+        const percentage = calcPercentage(row.examValues[exam.id], exam.maxMarks);
+        return resultMode === "marks" ? row.examValues[exam.id] : percentage === null ? null : percentage / 100;
+      });
+    });
+    combined.filter((analysis) => visible(`combined:${analysis.id}`)).forEach((analysis) => {
+      headings.push(analysis.name);
+      fields.push((row) => { const result = row.combinedValues[analysis.id]; return resultMode === "marks" ? result.combinedObtained : result.combinedPercentage === null ? null : result.combinedPercentage / 100; });
+    });
+    if (visible("assign")) { headings.push("Assignments"); fields.push((row) => row.submitted); }
+    if (visible("grace")) { headings.push("Grace"); fields.push((row) => row.grace || null); }
+    const worksheet = XLSX.utils.aoa_to_sheet([headings, ...shown.map((row) => fields.map((field) => field(row)))]);
+    headings.forEach((_, column) => {
+      if (resultMode === "percentage" && ((hasPlusOne && visible("plus") && column === 2) || regular.some((exam) => headings[column] === `${exam.name} (Max ${formatMark(exam.maxMarks)})`) || combined.some((analysis) => headings[column] === analysis.name))) {
+        for (let line = 2; line <= shown.length + 1; line += 1) { const cell = worksheet[XLSX.utils.encode_cell({ r: line - 1, c: column })]; if (cell && typeof cell.v === "number") cell.z = "0.00%"; }
+      }
+    });
+    worksheet["!cols"] = headings.map((heading) => ({ wch: Math.min(Math.max(12, heading.length + 2), 36) }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Class Report");
+    XLSX.writeFile(workbook, "class-report.xlsx");
+  };
   const column = (key: string, label: string) => (
     <th
       key={key}
@@ -350,13 +391,13 @@ function ClassReport({
     ["grace", "Grace marks"] as [string, string],
   ];
   return (
-    <div className="space-y-4">
-      <div className="card p-4 flex items-center gap-2" role="group" aria-label="Academic result display">
+    <div className="space-y-4 class-report">
+      <div className="card p-4 flex items-center gap-2 no-print" role="group" aria-label="Academic result display">
         <span className="text-sm font-medium mr-1">Display results:</span>
         <button type="button" className={resultMode === "marks" ? "btn-primary" : "btn-secondary"} onClick={() => setResultMode("marks")}>Marks</button>
         <button type="button" className={resultMode === "percentage" ? "btn-primary" : "btn-secondary"} onClick={() => setResultMode("percentage")}>Percentage</button>
       </div>
-      <div className="card p-5">
+      <div className="card p-5 no-print">
         <details>
           <summary className="cursor-pointer text-sm font-medium">
             Visible report fields
@@ -375,9 +416,10 @@ function ClassReport({
           </div>
         </details>
       </div>
-      <div className="card p-4"><label className="label" htmlFor="report-student-search">Search students</label><div className="relative max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" /><input id="report-student-search" className="input pl-9 pr-10" value={studentSearch} onChange={(event) => setStudentSearch(event.target.value)} placeholder="Search students..." />{studentSearch && <button className="absolute right-2 top-1/2 -translate-y-1/2 btn-icon" onClick={() => setStudentSearch("")} aria-label="Clear student search"><X className="w-4 h-4" /></button>}</div></div>
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="card p-4 no-print"><button type="button" className="btn-secondary" onClick={exportExcel}><Download className="w-4 h-4" /> Export Excel</button></div>
+      <div className="card p-4 no-print"><label className="label" htmlFor="report-student-search">Search students</label><div className="relative max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" /><input id="report-student-search" className="input pl-9 pr-10" value={studentSearch} onChange={(event) => setStudentSearch(event.target.value)} placeholder="Search students..." />{studentSearch && <button className="absolute right-2 top-1/2 -translate-y-1/2 btn-icon" onClick={() => setStudentSearch("")} aria-label="Clear student search"><X className="w-4 h-4" /></button>}</div></div>
+      <div className="card overflow-hidden class-report-table">
+        <div className="overflow-x-auto class-report-scroll">
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50">
@@ -423,7 +465,7 @@ function ClassReport({
                         ? "—"
                         : row.po.teMarks === null
                           ? <span className="text-gray-400">—</span>
-                          : <span className={plusOneTEPercentageTone(row.po.tePercentage, config.requiredTEPercent) === "failed" ? "inline-block rounded px-2 py-0.5 bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-300" : ""}>{formatAcademicResult(resultMode, row.po.teMarks, row.po.tePercentage, dec)}</span>}
+                          : <span className={({ failed: "inline-block rounded px-2 py-0.5 bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-300", aplus: "inline-block rounded px-2 py-0.5 bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-300", normal: "", neutral: "text-gray-400" }[plusOneTEPercentageTone(row.po.teMarks, row.po.tePercentage, config)])}>{formatAcademicResult(resultMode, row.po.teMarks, row.po.tePercentage, dec)}</span>}
                     </td>
                   )}
                   {hasPlusOne && visible("double") && (
@@ -463,7 +505,7 @@ function ClassReport({
                     .map((analysis) => {
                       const result = row.combinedValues[analysis.id];
                       return (
-                        <td key={analysis.id}><span className={percentageResultTone(result.combinedPercentage, config.requiredTEPercent) === "failed" ? "inline-block rounded px-2 py-0.5 bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-300" : ""}>{formatAcademicResult(resultMode, result.combinedObtained, result.combinedPercentage, dec)}</span></td>
+                        <td key={analysis.id}><span className={({ failed: "inline-block rounded px-2 py-0.5 bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-300", aplus: "inline-block rounded px-2 py-0.5 bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-300", normal: "", neutral: "text-gray-400" }[academicResultTone(result.combinedObtained, result.combinedPercentage, config)])}>{formatAcademicResult(resultMode, result.combinedObtained, result.combinedPercentage, dec)}</span></td>
                       );
                     })}
                   {visible("assign") && (
