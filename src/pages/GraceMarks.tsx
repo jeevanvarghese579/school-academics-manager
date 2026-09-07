@@ -22,8 +22,9 @@ export function GraceMarks() {
   const [filterCategory, setFilterCategory] = useState('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<GraceMark | null>(null);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<GraceMark | null>(null);
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState<{ id: string; top: number; right: number } | null>(null);
   const [formData, setFormData] = useState({
     title: '', description: '', category: 'Other' as string, date: '', studentId: '', classId: '', marks: '',
   });
@@ -44,7 +45,8 @@ export function GraceMarks() {
     if (!repo) return;
     if (!formData.title.trim()) { toast('Title is required', 'error'); return; }
     if (!formData.classId) { toast('Please select a class', 'error'); return; }
-    if (!formData.studentId) { toast('Please select a student', 'error'); return; }
+    if (editing && !formData.studentId) { toast('Please select a student', 'error'); return; }
+    if (!editing && selectedStudentIds.size === 0) { toast('Please select at least one student', 'error'); return; }
     const marks = parseFloat(formData.marks);
     if (isNaN(marks) || marks < 0) { toast('Grace marks must be a non-negative number', 'error'); return; }
     try {
@@ -52,11 +54,16 @@ export function GraceMarks() {
         await repo.updateGraceMark({ ...editing, ...formData, marks });
         toast('Grace mark updated', 'success');
       } else {
-        await repo.createGraceMark({ ...formData, marks });
-        toast('Grace mark added', 'success');
+        await Promise.all(
+          [...selectedStudentIds].map((studentId) =>
+            repo.createGraceMark({ ...formData, studentId, marks }),
+          ),
+        );
+        toast(`Grace mark added to ${selectedStudentIds.size} student${selectedStudentIds.size === 1 ? '' : 's'}`, 'success');
       }
       setModalOpen(false);
       setEditing(null);
+      setSelectedStudentIds(new Set());
       setFormData({ title: '', description: '', category: 'Other', date: '', studentId: '', classId: '', marks: '' });
       await load();
     } catch (err: any) { toast(err.message || 'Failed to save', 'error'); }
@@ -76,17 +83,25 @@ export function GraceMarks() {
 
   const openEdit = (g: GraceMark) => {
     setEditing(g);
+    setSelectedStudentIds(new Set([g.studentId]));
     setFormData({ title: g.title, description: g.description || '', category: g.category, date: g.date, studentId: g.studentId, classId: g.classId, marks: String(g.marks) });
     setModalOpen(true); setMenuOpen(null);
   };
 
   const openCreate = () => {
     setEditing(null);
+    setSelectedStudentIds(new Set());
     setFormData({ title: '', description: '', category: 'Other', date: new Date().toISOString().slice(0, 10), studentId: '', classId: classes[0]?.id || '', marks: '' });
     setModalOpen(true);
   };
 
   const classStudents = students.filter((s) => s.classId === formData.classId);
+  const toggleStudent = (studentId: string) =>
+    setSelectedStudentIds((current) => {
+      const next = new Set(current);
+      next.has(studentId) ? next.delete(studentId) : next.add(studentId);
+      return next;
+    });
 
   const filtered = graceMarks.filter((g) => {
     if (filterClass !== 'all' && g.classId !== filterClass) return false;
@@ -160,11 +175,19 @@ export function GraceMarks() {
                         <td className="px-4 py-3 text-sm font-semibold text-success-600 dark:text-success-400">+{g.marks}</td>
                         <td className="px-4 py-3 text-right">
                           <div className="relative">
-                            <button onClick={() => setMenuOpen(menuOpen === g.id ? null : g.id)} className="btn-icon w-8 h-8" aria-label="Menu"><MoreVertical className="w-4 h-4" /></button>
-                            {menuOpen === g.id && (
+                            <button onClick={(event) => {
+                              if (menuOpen?.id === g.id) return setMenuOpen(null);
+                              const rect = event.currentTarget.getBoundingClientRect();
+                              setMenuOpen({
+                                id: g.id,
+                                top: Math.min(rect.bottom + 4, window.innerHeight - 92),
+                                right: Math.max(8, window.innerWidth - rect.right),
+                              });
+                            }} className="btn-icon w-8 h-8" aria-label="Menu"><MoreVertical className="w-4 h-4" /></button>
+                            {menuOpen?.id === g.id && (
                               <>
-                                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />
-                                <div className="absolute right-0 top-10 z-20 w-36 bg-white dark:bg-gray-800 rounded-xl shadow-e3 border border-gray-100 dark:border-gray-700 py-1 animate-scale-in">
+                                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(null)} />
+                                <div className="fixed z-50 w-36 bg-white dark:bg-gray-800 rounded-xl shadow-e3 border border-gray-100 dark:border-gray-700 py-1 animate-scale-in" style={{ top: menuOpen.top, right: menuOpen.right }}>
                                   <button onClick={() => openEdit(g)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"><Pencil className="w-4 h-4" /> Edit</button>
                                   <button onClick={() => { setDeleteTarget(g); setMenuOpen(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-error-600 dark:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/20"><Trash2 className="w-4 h-4" /> Delete</button>
                                 </div>
@@ -183,7 +206,7 @@ export function GraceMarks() {
       )}
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Grace Mark' : 'Add Grace Mark'}
-        footer={<><button className="btn-secondary" onClick={() => setModalOpen(false)}>Cancel</button><button className="btn-primary" onClick={handleSave}>{editing ? 'Save' : 'Add'}</button></>}
+        footer={<><button className="btn-secondary" onClick={() => setModalOpen(false)}>Cancel</button><button className="btn-primary" onClick={handleSave}>{editing ? 'Save' : `Add to ${selectedStudentIds.size} student${selectedStudentIds.size === 1 ? '' : 's'}`}</button></>}
       >
         <div className="space-y-3">
           <div>
@@ -191,21 +214,42 @@ export function GraceMarks() {
             <input id="gm-title" className="input" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. State Sports" />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className={editing ? '' : 'col-span-2'}>
               <label className="label" htmlFor="gm-class">Class</label>
-              <select id="gm-class" className="input" value={formData.classId} onChange={(e) => setFormData({ ...formData, classId: e.target.value, studentId: '' })}>
+              <select id="gm-class" className="input" value={formData.classId} onChange={(e) => { setFormData({ ...formData, classId: e.target.value, studentId: '' }); setSelectedStudentIds(new Set()); }}>
                 <option value="">Select class</option>
                 {classes.map((c) => <option key={c.id} value={c.id}>{c.name} {c.division}</option>)}
               </select>
             </div>
-            <div>
+            {editing && <div>
               <label className="label" htmlFor="gm-student">Student</label>
               <select id="gm-student" className="input" value={formData.studentId} onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}>
                 <option value="">Select student</option>
                 {classStudents.map((s) => <option key={s.id} value={s.id}>{s.rollNumber} — {s.name}</option>)}
               </select>
-            </div>
+            </div>}
           </div>
+          {!editing && (
+            <fieldset>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <span className="label mb-0">Students</span>
+                <div className="flex gap-2">
+                  <button type="button" className="text-xs text-primary-700 hover:underline" onClick={() => setSelectedStudentIds(new Set(classStudents.map((student) => student.id)))}>Select all</button>
+                  <button type="button" className="text-xs text-gray-600 hover:underline" onClick={() => setSelectedStudentIds(new Set())}>Clear</button>
+                </div>
+              </div>
+              <div className="max-h-52 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 p-2 space-y-1">
+                {classStudents.length === 0 ? (
+                  <p className="px-2 py-3 text-sm text-gray-500">No students in this class.</p>
+                ) : classStudents.map((student) => (
+                  <label key={student.id} className="flex items-center gap-3 rounded-lg px-2 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+                    <input type="checkbox" checked={selectedStudentIds.has(student.id)} onChange={() => toggleStudent(student.id)} />
+                    <span>{student.rollNumber} — {student.name}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label" htmlFor="gm-cat">Category</label>

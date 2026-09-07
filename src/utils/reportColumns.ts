@@ -1,4 +1,14 @@
-import type { Exam } from "@/types";
+import type { CombinedAnalysis, Exam } from "@/types";
+
+export function combinedAnalysisDate(
+  analysis: Pick<CombinedAnalysis, "examIds" | "date">,
+  exams: Exam[],
+) {
+  const referencedDates = analysis.examIds
+    .map((examId) => exams.find((exam) => exam.id === examId)?.date)
+    .filter((date): date is string => Boolean(date));
+  return referencedDates.sort((a, b) => b.localeCompare(a))[0] ?? analysis.date ?? "";
+}
 
 export function classReportExamSchema(exams: Exam[], classId: string) {
   const classExams = exams.filter((exam) => exam.classId === classId);

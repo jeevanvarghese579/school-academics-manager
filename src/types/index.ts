@@ -102,6 +102,8 @@ export interface CombinedAnalysis extends BaseEntity {
   classId: ID;
   name: string;
   examIds: ID[];
+  /** Latest date among the exams included in this analysis. */
+  date?: string;
 }
 
 export interface BackupData {

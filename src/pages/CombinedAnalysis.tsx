@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Modal } from '@/components/ui/Modal';
 import type { ClassRoom, CombinedAnalysis as CombinedAnalysisType, Exam, ExamMark, Student } from '@/types';
 import { calcCombinedPercentage, formatPercent } from '@/utils/calculations';
+import { combinedAnalysisDate } from '@/utils/reportColumns';
 
 export function CombinedAnalysis() {
   const { repo } = useApp(); const { toast } = useToast();
@@ -23,7 +24,7 @@ export function CombinedAnalysis() {
   const classExams = exams.filter(e => e.classId === selectedClass && e.type === 'regular');
   const openCreate = () => { setEditing({ id: '', classId: selectedClass, name: '', examIds: [], createdAt: '', updatedAt: '' }); setName(''); setExamIds(new Set()); };
   const openEdit = (a: CombinedAnalysisType) => { setEditing(a); setName(a.name); setExamIds(new Set(a.examIds)); };
-  const save = async () => { if (!repo) return; if (!name.trim()) return toast('Enter a name', 'error'); if (examIds.size < 2) return toast('Select at least two normal exams', 'error'); try { if (editing?.id) await repo.updateCombinedAnalysis({ ...editing, name: name.trim(), examIds: [...examIds] }); else await repo.createCombinedAnalysis({ classId: selectedClass, name: name.trim(), examIds: [...examIds] }); await Promise.all([repo.getCombinedAnalyses(selectedClass)]).then(([a]) => setAnalyses(a)); setEditing(null); toast('Combined analysis saved', 'success'); } catch (e: any) { toast(e.message || 'Unable to save', 'error'); } };
+  const save = async () => { if (!repo) return; if (!name.trim()) return toast('Enter a name', 'error'); if (examIds.size < 2) return toast('Select at least two normal exams', 'error'); const selectedExamIds = [...examIds]; const date = combinedAnalysisDate({ examIds: selectedExamIds }, classExams); try { if (editing?.id) await repo.updateCombinedAnalysis({ ...editing, name: name.trim(), examIds: selectedExamIds, date }); else await repo.createCombinedAnalysis({ classId: selectedClass, name: name.trim(), examIds: selectedExamIds, date }); await Promise.all([repo.getCombinedAnalyses(selectedClass)]).then(([a]) => setAnalyses(a)); setEditing(null); toast('Combined analysis saved', 'success'); } catch (e: any) { toast(e.message || 'Unable to save', 'error'); } };
   const toggle = (id: string) => setExamIds(old => { const next = new Set(old); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const preview = useMemo(() => editing ? students.map(student => { const selected = classExams.filter(ex => examIds.has(ex.id)); const result = calcCombinedPercentage(selected.map(ex => ({ obtained: marks.find(m => m.examId === ex.id && m.studentId === student.id)?.marks ?? null, maxMarks: ex.maxMarks }))); return { student, ...result }; }) : [], [editing, students, classExams, examIds, marks]);
   if (!classes.length) return <EmptyState title="No classes available" description="Create a class first." action={<Link className="btn-primary" to="/classes">Go to Classes</Link>} />;

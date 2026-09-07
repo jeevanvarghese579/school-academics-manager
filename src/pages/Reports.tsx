@@ -24,7 +24,7 @@ import {
   formatMark,
   formatPercent,
 } from "@/utils/calculations";
-import { classReportExamSchema } from "@/utils/reportColumns";
+import { classReportExamSchema, combinedAnalysisDate } from "@/utils/reportColumns";
 import { matchesStudentSearch, normalExamHeader } from "@/utils/reportPresentation";
 import { academicResultTone, normalExamMarkTone, plusOneTEPercentageTone } from "@/utils/reportMarkStyle";
 import { academicResultSortValue, formatAcademicResult, type AcademicResultMode } from "@/utils/reportResultPresentation";
@@ -196,10 +196,7 @@ function ClassReport({
     () => new Set((search.get("hidden") ?? "").split(",").filter(Boolean)),
   );
   const [studentSearch, setStudentSearch] = useState(search.get("studentSearch") ?? "");
-  const [resultMode, setResultMode] = useState<AcademicResultMode>(() => {
-    try { return sessionStorage.getItem("classReportResultMode") === "marks" ? "marks" : "percentage"; }
-    catch { return "percentage"; }
-  });
+  const [resultMode, setResultMode] = useState<AcademicResultMode>("marks");
   const config = settings ?? DEFAULT_SETTINGS;
   const dec = settings?.decimalPlaces ?? 2;
   useEffect(() => {
@@ -210,9 +207,6 @@ function ClassReport({
       studentSearch: studentSearch || null,
     });
   }, [sort, dir, hidden, studentSearch]);
-  useEffect(() => {
-    try { sessionStorage.setItem("classReportResultMode", resultMode); } catch { /* optional */ }
-  }, [resultMode]);
   const visible = (key: string) => !hidden.has(key);
   const toggle = (key: string) => {
     setHidden((old) => {
@@ -302,6 +296,28 @@ function ClassReport({
         : Number(av) - Number(bv);
     return dir === "asc" ? compare : -compare;
   });
+  const datedResults: (
+    | { kind: "exam"; key: string; date: string; exam: Exam }
+    | { kind: "combined"; key: string; date: string; analysis: CombinedAnalysis }
+  )[] = [
+    ...regular.map((exam) => ({
+      kind: "exam" as const,
+      key: exam.id,
+      date: exam.date,
+      exam,
+    })),
+    ...combined.map((analysis) => ({
+      kind: "combined" as const,
+      key: `combined:${analysis.id}`,
+      date: combinedAnalysisDate(analysis, regular),
+      analysis,
+    })),
+  ].sort((a, b) => {
+    if (!a.date && !b.date) return a.key.localeCompare(b.key);
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return a.date.localeCompare(b.date) || a.key.localeCompare(b.key);
+  });
   const exportExcel = () => {
     const headings: string[] = ["Roll", "Student"];
     const fields: ((row: (typeof rows)[number]) => string | number | null)[] = [
@@ -318,16 +334,19 @@ function ClassReport({
     if (hasPlusOne && visible("double")) { headings.push("Double Pass Required"); fields.push((row) => row.po?.teMarks === null ? null : row.po?.doublePass ? 0 : row.po?.marksRequiredForDoublePass ?? null); }
     if (hasPlusOne && visible("aplus")) { headings.push("A+ Required"); fields.push((row) => row.po?.teMarks === null ? null : row.po?.aPlusAchieved ? 0 : row.po?.marksRequiredForAPlus ?? null); }
     if (hasPlusOne && visible("double-aplus")) { headings.push("Double A+ Required"); fields.push((row) => row.po?.teMarks === null ? null : row.po?.doubleAPlusAchieved ? 0 : row.po?.marksRequiredForDoubleAPlus ?? null); }
-    regular.filter((exam) => visible(exam.id)).forEach((exam) => {
-      headings.push(`${exam.name} (Max ${formatMark(exam.maxMarks)})`);
-      fields.push((row) => {
-        const percentage = calcPercentage(row.examValues[exam.id], exam.maxMarks);
-        return resultMode === "marks" ? row.examValues[exam.id] : percentage === null ? null : percentage / 100;
-      });
-    });
-    combined.filter((analysis) => visible(`combined:${analysis.id}`)).forEach((analysis) => {
-      headings.push(analysis.name);
-      fields.push((row) => { const result = row.combinedValues[analysis.id]; return resultMode === "marks" ? result.combinedObtained : result.combinedPercentage === null ? null : result.combinedPercentage / 100; });
+    datedResults.filter((result) => visible(result.key)).forEach((result) => {
+      if (result.kind === "exam") {
+        const { exam } = result;
+        headings.push(`${exam.name} (Max ${formatMark(exam.maxMarks)})`);
+        fields.push((row) => {
+          const percentage = calcPercentage(row.examValues[exam.id], exam.maxMarks);
+          return resultMode === "marks" ? row.examValues[exam.id] : percentage === null ? null : percentage / 100;
+        });
+      } else {
+        const { analysis } = result;
+        headings.push(analysis.name);
+        fields.push((row) => { const value = row.combinedValues[analysis.id]; return resultMode === "marks" ? value.combinedObtained : value.combinedPercentage === null ? null : value.combinedPercentage / 100; });
+      }
     });
     if (visible("assign")) { headings.push("Assignments"); fields.push((row) => row.submitted); }
     if (visible("grace")) { headings.push("Grace"); fields.push((row) => row.grace || null); }
@@ -382,11 +401,10 @@ function ClassReport({
           ["double-aplus", "Double A+ Required"],
         ] as [string, string][])
       : []),
-    ...regular.map((exam) => [exam.id, exam.name] as [string, string]),
-    ...combined.map(
-      (analysis) =>
-        [`combined:${analysis.id}`, analysis.name] as [string, string],
-    ),
+    ...datedResults.map((result) => [
+      result.key,
+      result.kind === "exam" ? result.exam.name : result.analysis.name,
+    ] as [string, string]),
     ["assign", "Assignment status"],
     ["grace", "Grace marks"] as [string, string],
   ];
@@ -454,13 +472,12 @@ function ClassReport({
                 {hasPlusOne && visible("double-aplus") && (
                   <th>Double A+ Required</th>
                 )}
-                {regular
-                  .filter((exam) => visible(exam.id))
-                  .map(examColumn)}
-                {combined
-                  .filter((analysis) => visible(`combined:${analysis.id}`))
-                  .map((analysis) =>
-                    column(`combined:${analysis.id}`, analysis.name),
+                {datedResults
+                  .filter((result) => visible(result.key))
+                  .map((result) =>
+                    result.kind === "exam"
+                      ? examColumn(result.exam)
+                      : column(result.key, result.analysis.name),
                   )}
                 {visible("assign") && assignmentColumn()}
                 {visible("grace") && column("grace", "Grace")}
@@ -514,18 +531,15 @@ function ClassReport({
                       )}
                     </td>
                   )}
-                  {regular
-                    .filter((exam) => visible(exam.id))
-                    .map((exam) => (
-                      <td key={exam.id}><span className={`inline-block rounded px-2 py-0.5 ${markClass(row.examValues[exam.id], exam)}`}>{formatAcademicResult(resultMode, row.examValues[exam.id], calcPercentage(row.examValues[exam.id], exam.maxMarks), dec)}</span></td>
-                    ))}
-                  {combined
-                    .filter((analysis) => visible(`combined:${analysis.id}`))
-                    .map((analysis) => {
-                      const result = row.combinedValues[analysis.id];
-                      return (
-                        <td key={analysis.id}><span className={({ failed: "inline-block rounded px-2 py-0.5 bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-300", aplus: "inline-block rounded px-2 py-0.5 bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-300", normal: "", neutral: "text-gray-400" }[academicResultTone(result.combinedObtained, result.combinedPercentage, config)])}>{formatAcademicResult(resultMode, result.combinedObtained, result.combinedPercentage, dec)}</span></td>
-                      );
+                  {datedResults
+                    .filter((result) => visible(result.key))
+                    .map((result) => {
+                      if (result.kind === "exam") {
+                        const { exam } = result;
+                        return <td key={result.key}><span className={`inline-block rounded px-2 py-0.5 ${markClass(row.examValues[exam.id], exam)}`}>{formatAcademicResult(resultMode, row.examValues[exam.id], calcPercentage(row.examValues[exam.id], exam.maxMarks), dec)}</span></td>;
+                      }
+                      const value = row.combinedValues[result.analysis.id];
+                      return <td key={result.key}><span className={({ failed: "inline-block rounded px-2 py-0.5 bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-300", aplus: "inline-block rounded px-2 py-0.5 bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-300", normal: "", neutral: "text-gray-400" }[academicResultTone(value.combinedObtained, value.combinedPercentage, config)])}>{formatAcademicResult(resultMode, value.combinedObtained, value.combinedPercentage, dec)}</span></td>;
                     })}
                   {visible("assign") && (
                     <td>{row.submitted}</td>
