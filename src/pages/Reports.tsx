@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Download, FileBarChart, Printer, Search, X } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -153,6 +153,7 @@ export function Reports() {
           statuses={statuses}
           grace={grace}
           settings={settings}
+          reportClassName={`${classes.find((item) => item.id === classId)?.name ?? "Class"} ${classes.find((item) => item.id === classId)?.division ?? ""}`.trim()}
           search={search}
           updateSearch={updateSearch}
         />
@@ -172,6 +173,7 @@ function ClassReport({
   statuses,
   grace,
   settings,
+  reportClassName,
   search,
   updateSearch,
 }: {
@@ -185,6 +187,7 @@ function ClassReport({
   statuses: AssignmentStatus[];
   grace: GraceMark[];
   settings: UserSettings | null;
+  reportClassName: string;
   search: URLSearchParams;
   updateSearch: (updates: Record<string, string | null>) => void;
 }) {
@@ -197,6 +200,7 @@ function ClassReport({
   );
   const [studentSearch, setStudentSearch] = useState(search.get("studentSearch") ?? "");
   const [resultMode, setResultMode] = useState<AcademicResultMode>("marks");
+  const [printOrientation, setPrintOrientation] = useState<"portrait" | "landscape">("portrait");
   const config = settings ?? DEFAULT_SETTINGS;
   const dec = settings?.decimalPlaces ?? 2;
   useEffect(() => {
@@ -408,12 +412,112 @@ function ClassReport({
     ["assign", "Assignment status"],
     ["grace", "Grace marks"] as [string, string],
   ];
+  type ReportRow = (typeof rows)[number];
+  const portraitFields: {
+    key: string;
+    label: string;
+    value: (row: ReportRow) => ReactNode;
+  }[] = [
+    ...(hasPlusOne
+      ? [
+          {
+            key: "plus",
+            label: "Plus One TE",
+            value: (row: ReportRow) =>
+              !row.po
+                ? "—"
+                : formatAcademicResult(
+                    resultMode,
+                    row.po.teMarks,
+                    row.po.tePercentage,
+                    dec,
+                  ),
+          },
+          {
+            key: "double",
+            label: "Double Pass Required",
+            value: (row: ReportRow) =>
+              metric(
+                row.po?.marksRequiredForDoublePass,
+                row.po,
+                row.po?.doublePass ?? false,
+              ),
+          },
+          {
+            key: "aplus",
+            label: "A+ Required",
+            value: (row: ReportRow) =>
+              metric(
+                row.po?.marksRequiredForAPlus,
+                row.po,
+                row.po?.aPlusAchieved ?? false,
+              ),
+          },
+          {
+            key: "double-aplus",
+            label: "Double A+ Required",
+            value: (row: ReportRow) =>
+              metric(
+                row.po?.marksRequiredForDoubleAPlus,
+                row.po,
+                row.po?.doubleAPlusAchieved ?? false,
+              ),
+          },
+        ]
+      : []),
+    ...datedResults.map((result) => ({
+      key: result.key,
+      label:
+        result.kind === "exam"
+          ? `${result.exam.name} (Max ${formatMark(result.exam.maxMarks)})`
+          : result.analysis.name,
+      value: (row: ReportRow) => {
+        if (result.kind === "exam") {
+          const mark = row.examValues[result.exam.id];
+          return formatAcademicResult(
+            resultMode,
+            mark,
+            calcPercentage(mark, result.exam.maxMarks),
+            dec,
+          );
+        }
+        const combinedResult = row.combinedValues[result.analysis.id];
+        return formatAcademicResult(
+          resultMode,
+          combinedResult.combinedObtained,
+          combinedResult.combinedPercentage,
+          dec,
+        );
+      },
+    })),
+    {
+      key: "assign",
+      label: `Assignments (Total ${assignments.length})`,
+      value: (row: ReportRow) => row.submitted,
+    },
+    {
+      key: "grace",
+      label: "Grace marks",
+      value: (row: ReportRow) => row.grace || "—",
+    },
+  ].filter((field) => visible(field.key));
+  const portraitGroups = Array.from(
+    { length: Math.max(1, Math.ceil(portraitFields.length / 4)) },
+    (_, index) => portraitFields.slice(index * 4, index * 4 + 4),
+  );
   return (
-    <div className="space-y-4 class-report">
+    <div className={`space-y-4 class-report print-${printOrientation}`}>
+      <style>{`@page { size: A4 ${printOrientation}; margin: 8mm; }`}</style>
       <div className="card p-4 flex items-center gap-2 no-print" role="group" aria-label="Academic result display">
         <span className="text-sm font-medium mr-1">Display results:</span>
         <button type="button" className={resultMode === "marks" ? "btn-primary" : "btn-secondary"} onClick={() => setResultMode("marks")}>Marks</button>
         <button type="button" className={resultMode === "percentage" ? "btn-primary" : "btn-secondary"} onClick={() => setResultMode("percentage")}>Percentage</button>
+      </div>
+      <div className="card p-4 flex items-center gap-2 no-print" role="group" aria-label="PDF page orientation">
+        <span className="text-sm font-medium mr-1">PDF layout:</span>
+        <button type="button" className={printOrientation === "portrait" ? "btn-primary" : "btn-secondary"} onClick={() => setPrintOrientation("portrait")}>Portrait</button>
+        <button type="button" className={printOrientation === "landscape" ? "btn-primary" : "btn-secondary"} onClick={() => setPrintOrientation("landscape")}>Landscape</button>
+        {printOrientation === "portrait" && <span className="text-xs text-gray-500">Fields are split across portrait pages.</span>}
       </div>
       <div className="card p-5 no-print">
         <details>
@@ -455,6 +559,42 @@ function ClassReport({
       </div>
       <div className="card p-4 no-print"><button type="button" className="btn-secondary" onClick={exportExcel}><Download className="w-4 h-4" /> Export Excel</button></div>
       <div className="card p-4 no-print"><label className="label" htmlFor="report-student-search">Search students</label><div className="relative max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" /><input id="report-student-search" className="input pl-9 pr-10" value={studentSearch} onChange={(event) => setStudentSearch(event.target.value)} placeholder="Search students..." />{studentSearch && <button className="absolute right-2 top-1/2 -translate-y-1/2 btn-icon" onClick={() => setStudentSearch("")} aria-label="Clear student search"><X className="w-4 h-4" /></button>}</div></div>
+      <div className="portrait-report-pages print-only">
+        {portraitGroups.map((group, groupIndex) => (
+          <section className="portrait-report-page" key={groupIndex}>
+            <div className="portrait-report-heading">
+              <h1>{reportClassName} — Class Report</h1>
+              {portraitGroups.length > 1 && (
+                <span>
+                  Column group {groupIndex + 1} of {portraitGroups.length}
+                </span>
+              )}
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Roll</th>
+                  <th>Student</th>
+                  {group.map((field) => (
+                    <th key={field.key}>{field.label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map((row) => (
+                  <tr key={row.student.id}>
+                    <td>{row.student.rollNumber}</td>
+                    <td>{row.student.name}</td>
+                    {group.map((field) => (
+                      <td key={field.key}>{field.value(row)}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        ))}
+      </div>
       <div className="card overflow-hidden class-report-table">
         <div className="overflow-x-auto class-report-scroll">
           <table className="w-full">

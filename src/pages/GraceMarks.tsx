@@ -95,7 +95,11 @@ export function GraceMarks() {
     setModalOpen(true);
   };
 
-  const classStudents = students.filter((s) => s.classId === formData.classId);
+  const classStudents = students
+    .filter((student) => student.classId === formData.classId)
+    .sort((a, b) =>
+      a.rollNumber.localeCompare(b.rollNumber, undefined, { numeric: true }),
+    );
   const toggleStudent = (studentId: string) =>
     setSelectedStudentIds((current) => {
       const next = new Set(current);

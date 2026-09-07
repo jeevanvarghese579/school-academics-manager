@@ -120,6 +120,64 @@
     break-inside: avoid;
     page-break-inside: avoid;
   }
+  .class-report.print-landscape .portrait-report-pages {
+    display: none !important;
+  }
+  .class-report.print-portrait > .class-report-table {
+    display: none !important;
+  }
+  .class-report.print-portrait .portrait-report-pages {
+    display: block !important;
+  }
+  .portrait-report-page {
+    break-after: page;
+    page-break-after: always;
+  }
+  .portrait-report-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  .portrait-report-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8mm;
+    margin-bottom: 4mm;
+  }
+  .portrait-report-heading h1 {
+    font-size: 14pt;
+    font-weight: 700;
+  }
+  .portrait-report-heading span {
+    color: #4b5563;
+    font-size: 8pt;
+  }
+  .portrait-report-page table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse;
+    font-size: 9pt !important;
+  }
+  .portrait-report-page th,
+  .portrait-report-page td {
+    border: 1px solid #9ca3af;
+    padding: 2.2mm 1.5mm !important;
+    overflow-wrap: anywhere;
+    vertical-align: middle;
+  }
+  .portrait-report-page th {
+    background: #f3f4f6 !important;
+    font-size: 8pt;
+    text-align: left;
+  }
+  .portrait-report-page th:first-child,
+  .portrait-report-page td:first-child {
+    width: 12%;
+  }
+  .portrait-report-page th:nth-child(2),
+  .portrait-report-page td:nth-child(2) {
+    width: 28%;
+  }
 }
 .print-only {
   display: none;
