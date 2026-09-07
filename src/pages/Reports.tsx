@@ -402,6 +402,25 @@ function ClassReport({
           <summary className="cursor-pointer text-sm font-medium">
             Visible report fields
           </summary>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setHidden(new Set())}
+            >
+              Mark all
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                setHidden(new Set(items.map(([key]) => key)));
+                setSort("roll");
+              }}
+            >
+              Unmark all
+            </button>
+          </div>
           <div className="mt-3 flex flex-wrap gap-4">
             {items.map(([key, label]) => (
               <label key={key} className="flex gap-2 text-sm">
