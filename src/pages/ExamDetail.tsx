@@ -111,8 +111,8 @@ export function ExamDetail() {
     setDirty(true);
   };
 
-  const handleSave = async () => {
-    if (!repo || !exam || !id) return;
+  const handleSave = async (): Promise<boolean> => {
+    if (!repo || !exam || !id || saving) return false;
     setSaving(true);
     try {
       if (isPlusOne) {
@@ -131,8 +131,18 @@ export function ExamDetail() {
       }
       setDirty(false);
       toast('Marks saved', 'success');
-    } catch (err: any) { toast(err.message || 'Failed to save', 'error'); }
+      return true;
+    } catch (err: any) {
+      toast(err.message || 'Failed to save', 'error');
+      return false;
+    }
     finally { setSaving(false); }
+  };
+
+  const handleBack = async () => {
+    if (saving) return;
+    if (dirty && !(await handleSave())) return;
+    navigate('/exams');
   };
 
   const handleExport = () => {
@@ -216,7 +226,7 @@ export function ExamDetail() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 flex-wrap">
-        <button onClick={() => navigate('/exams')} className="btn-icon" aria-label="Back"><ArrowLeft className="w-5 h-5" /></button>
+        <button onClick={() => void handleBack()} disabled={saving} className="btn-icon" aria-label="Save changes and go back"><ArrowLeft className="w-5 h-5" /></button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             {isPlusOne ? <Award className="w-5 h-5 text-accent-600 dark:text-accent-400" /> : <ClipboardCheck className="w-5 h-5 text-primary-600 dark:text-primary-400" />}
@@ -247,7 +257,7 @@ export function ExamDetail() {
                   <AlertCircle className="w-4 h-4" /> Unsaved changes
                 </span>
               )}
-              <button onClick={handleSave} disabled={saving || !dirty} className="btn-primary">
+              <button onClick={() => void handleSave()} disabled={saving || !dirty} className="btn-primary">
                 {saving ? <span className="animate-pulse">Saving...</span> : <><Save className="w-4 h-4" /> Save</>}
               </button>
             </div>
