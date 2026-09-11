@@ -23,6 +23,20 @@ describe('student profile data', () => {
     expect(points).toEqual(expect.not.arrayContaining([expect.objectContaining({ plusOneTotalPercentage: expect.anything() })]));
   });
 
+  it('excludes explicitly disabled exams from the graph while keeping older exams included', () => {
+    const legacy = exam('legacy', 'A', 'regular', '2026-05-01');
+    const excluded = { ...exam('excluded', 'A', 'regular', '2026-05-02'), includeInPerformance: false };
+    const points = profileGraphPoints(
+      [legacy, excluded],
+      'A',
+      'student',
+      [mark('legacy', 'student', 80), mark('excluded', 'student', 90)],
+      [],
+      DEFAULT_SETTINGS,
+    );
+    expect(points.map((point) => point.label)).toEqual(['legacy']);
+  });
+
   it('sorts navigation by numeric roll number and has first/last boundaries', () => {
     const students = ['1', '10', '2', '3'].map((rollNumber) => ({ id: rollNumber, rollNumber, name: rollNumber, classId: 'A', createdAt: '', updatedAt: '' })) as Student[];
     expect(studentsByNumericRoll(students).map((student) => student.rollNumber)).toEqual(['1', '2', '3', '10']);

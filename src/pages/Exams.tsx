@@ -22,7 +22,7 @@ export function Exams() {
   const [deleteTarget, setDeleteTarget] = useState<Exam | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    name: '', classId: '', subject: '', date: '', maxMarks: '100', notes: '', type: 'regular' as ExamType,
+    name: '', classId: '', subject: '', date: '', maxMarks: '100', notes: '', type: 'regular' as ExamType, includeInPerformance: true,
   });
 
   const load = async () => {
@@ -44,15 +44,15 @@ export function Exams() {
     if (isNaN(maxMarks) || maxMarks <= 0) { toast('Maximum marks must be greater than zero', 'error'); return; }
     try {
       if (editing) {
-        await repo.updateExam({ ...editing, name: formData.name, classId: formData.classId, subject: formData.subject || undefined, date: formData.date, maxMarks, notes: formData.notes || undefined, type: formData.type });
+        await repo.updateExam({ ...editing, name: formData.name, classId: formData.classId, subject: formData.subject || undefined, date: formData.date, maxMarks, notes: formData.notes || undefined, type: formData.type, includeInPerformance: formData.includeInPerformance });
         toast('Exam updated', 'success');
       } else {
-        await repo.createExam({ name: formData.name, classId: formData.classId, subject: formData.subject || undefined, date: formData.date, maxMarks, notes: formData.notes || undefined, type: formData.type });
+        await repo.createExam({ name: formData.name, classId: formData.classId, subject: formData.subject || undefined, date: formData.date, maxMarks, notes: formData.notes || undefined, type: formData.type, includeInPerformance: formData.includeInPerformance });
         toast('Exam created', 'success');
       }
       setModalOpen(false);
       setEditing(null);
-      setFormData({ name: '', classId: '', subject: '', date: '', maxMarks: '100', notes: '', type: 'regular' });
+      setFormData({ name: '', classId: '', subject: '', date: '', maxMarks: '100', notes: '', type: 'regular', includeInPerformance: true });
       await load();
     } catch (err: any) { toast(err.message || 'Failed to save', 'error'); }
   };
@@ -65,13 +65,13 @@ export function Exams() {
 
   const openEdit = (ex: Exam) => {
     setEditing(ex);
-    setFormData({ name: ex.name, classId: ex.classId, subject: ex.subject || '', date: ex.date, maxMarks: String(ex.maxMarks), notes: ex.notes || '', type: ex.type });
+    setFormData({ name: ex.name, classId: ex.classId, subject: ex.subject || '', date: ex.date, maxMarks: String(ex.maxMarks), notes: ex.notes || '', type: ex.type, includeInPerformance: ex.includeInPerformance !== false });
     setModalOpen(true); setMenuOpen(null);
   };
 
   const openCreate = () => {
     setEditing(null);
-    setFormData({ name: '', classId: classes[0]?.id || '', subject: '', date: new Date().toISOString().slice(0, 10), maxMarks: '100', notes: '', type: 'regular' });
+    setFormData({ name: '', classId: classes[0]?.id || '', subject: '', date: new Date().toISOString().slice(0, 10), maxMarks: '100', notes: '', type: 'regular', includeInPerformance: true });
     setModalOpen(true);
   };
 
@@ -194,6 +194,18 @@ export function Exams() {
               </button>
             </div>
           </div>
+          <label className="flex items-start gap-3 rounded-xl border border-gray-200 dark:border-gray-700 p-3 cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              checked={formData.includeInPerformance}
+              onChange={(e) => setFormData({ ...formData, includeInPerformance: e.target.checked })}
+            />
+            <span>
+              <span className="block text-sm font-medium text-gray-900 dark:text-white">Include in student performance</span>
+              <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">Show this exam in performance graphs and normal exam results.</span>
+            </span>
+          </label>
           <div>
             <label className="label" htmlFor="ex-notes">Notes (optional)</label>
             <textarea id="ex-notes" className="input min-h-16" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />

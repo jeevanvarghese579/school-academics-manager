@@ -39,6 +39,7 @@ import {
 import { academicResultTone } from "@/utils/reportMarkStyle";
 import {
   adjacentStudentIds,
+  isExamIncludedInPerformance,
   profileExams,
   profileGraphPoints,
   profileStatusTone,
@@ -138,6 +139,7 @@ export function StudentProfile() {
     [exams, student],
   );
   const regular = ordered.filter((exam) => exam.type === "regular");
+  const visibleRegular = regular.filter(isExamIncludedInPerformance);
   const plusExams = ordered.filter((exam) => exam.type === "plusOne");
   const graph = useMemo(
     () =>
@@ -287,7 +289,7 @@ export function StudentProfile() {
         <div className="p-5">
           <h2 className="font-semibold">Normal exam results</h2>
         </div>
-        {regular.length === 0 ? (
+        {visibleRegular.length === 0 ? (
           <p className="px-5 pb-5 text-sm text-gray-500">
             No normal exams for this class.
           </p>
@@ -304,7 +306,7 @@ export function StudentProfile() {
                 </tr>
               </thead>
               <tbody>
-                {regular.map((exam) => {
+                {visibleRegular.map((exam) => {
                   const obtained =
                     marks.find(
                       (entry) =>

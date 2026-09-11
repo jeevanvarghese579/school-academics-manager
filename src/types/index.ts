@@ -53,6 +53,8 @@ export interface Exam extends BaseEntity {
   maxMarks: number;
   notes?: string;
   type: ExamType;
+  /** Defaults to true for exams created before this setting was introduced. */
+  includeInPerformance?: boolean;
 }
 
 export interface ExamMark extends BaseEntity {

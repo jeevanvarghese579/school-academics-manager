@@ -6,6 +6,11 @@ export function profileExams(exams: Exam[], classId: string) {
   return exams.filter((exam) => exam.classId === classId).sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
 }
 
+/** Missing values belong to older exams and retain the original included behaviour. */
+export function isExamIncludedInPerformance(exam: Exam) {
+  return exam.includeInPerformance !== false;
+}
+
 export function studentsByNumericRoll(students: Student[]) {
   return [...students].sort((a, b) => a.rollNumber.localeCompare(b.rollNumber, undefined, { numeric: true }) || a.name.localeCompare(b.name));
 }
@@ -26,7 +31,7 @@ export function profileStatusTone(status: string): ProfileStatusTone {
 }
 
 export function profileGraphPoints(exams: Exam[], classId: string, studentId: string, marks: ExamMark[], plusMarks: PlusOneMark[], settings: Parameters<typeof calcPlusOneResult>[2]) {
-  return profileExams(exams, classId).flatMap((exam) => {
+  return profileExams(exams, classId).filter(isExamIncludedInPerformance).flatMap((exam) => {
     if (exam.type === 'regular') {
       const mark = marks.find((entry) => entry.examId === exam.id && entry.studentId === studentId)?.marks ?? null;
       const percentage = calcPercentage(mark, exam.maxMarks);
