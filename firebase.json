@@ -1,5 +1,4 @@
 {
-  "firestore": { "rules": "firestore.rules" },
   "hosting": {
 "site": "school-academics-manager",
     "public": "dist",

@@ -11,5 +11,6 @@ describe('Firestore sanitization', () => {
 describe('full backup validation', () => {
   it('preserves IDs and accepts valid relationships', () => expect(validateFullBackup(makeFullBackup(data)).data.students[0].id).toBe('s'));
   it('rejects unsupported future schemas before a restore', () => expect(() => validateFullBackup({ ...makeFullBackup(data), schemaVersion: 2 })).toThrow('Unsupported'));
+  it('rejects a backup declaring another application', () => expect(() => validateFullBackup({ ...makeFullBackup(data), appKey: 'labMetrics' })).toThrow('different application'));
   it('rejects broken relationships before a restore', () => expect(() => validateFullBackup(makeFullBackup({ ...data, students: [{ ...data.students[0], classId: 'missing' }] }))).toThrow('relationships'));
 });
