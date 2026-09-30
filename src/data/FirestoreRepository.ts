@@ -9,11 +9,11 @@ import { removeUndefinedValues } from '@/utils/firestore';
 const now = () => new Date().toISOString();
 type Entity = { id: string; createdAt: string; updatedAt: string };
 
-/** Every online document lives below users/{uid}; this repository never reads a shared collection. */
+/** Every online document lives below apps/schoolAcademicsManager/users/{uid}. */
 export class FirestoreRepository implements DataRepository {
   constructor(private readonly uid: string) {}
-  private col(name: string) { return collection(db, 'users', this.uid, name); }
-  private ref(name: string, id: string) { return doc(db, 'users', this.uid, name, id); }
+  private col(name: string) { return collection(db, 'apps', 'schoolAcademicsManager', 'users', this.uid, name); }
+  private ref(name: string, id: string) { return doc(db, 'apps', 'schoolAcademicsManager', 'users', this.uid, name, id); }
   private async all<T>(name: string, field?: string, value?: string): Promise<T[]> { const source = field ? query(this.col(name), where(field, '==', value)) : this.col(name); return (await getDocs(source)).docs.map(d => d.data() as T); }
   private async one<T>(name: string, id: string): Promise<T | null> { const snap = await getDoc(this.ref(name,id)); return snap.exists() ? snap.data() as T : null; }
   private async create<T extends Entity>(name:string, value: Omit<T,'id'|'createdAt'|'updatedAt'>):Promise<T>{const e={...value,id:uuidv4(),createdAt:now(),updatedAt:now()} as T;await setDoc(this.ref(name,e.id),removeUndefinedValues(e));return e;}
