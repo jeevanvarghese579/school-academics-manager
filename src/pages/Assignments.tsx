@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import {
   Plus, Search, Pencil, Trash2, ArrowLeft, ClipboardList, Calendar, MoreVertical,
-  CheckSquare, Square, CheckCheck, X, ArrowUpDown, Receipt,
+  CheckSquare, Square, CheckCheck, X, ArrowUpDown, Receipt, ClipboardCopy,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/ui/Toast';
@@ -215,6 +215,7 @@ export function AssignmentDetail() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<AssignmentStudentSort>('roll');
   const [direction, setDirection] = useState<SortDirection>('asc');
+  const [bulkAction, setBulkAction] = useState<boolean | null>(null);
 
   const load = async () => {
     if (!repo || !id) return;
@@ -257,6 +258,23 @@ export function AssignmentDetail() {
     } catch (err: any) { toast(err.message || 'Failed', 'error'); }
   };
 
+  const copyNamesByPaymentStatus = async (paid: boolean) => {
+    const names = students
+      .filter((student) => (statuses.get(student.id) ?? false) === paid)
+      .map((student) => student.name.trim())
+      .filter(Boolean);
+    if (names.length === 0) {
+      toast(`No ${paid ? 'paid' : 'not paid'} students to copy`, 'info');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(names.join('\n'));
+      toast(`Copied ${names.length} ${paid ? 'paid' : 'not paid'} student name${names.length === 1 ? '' : 's'}`, 'success');
+    } catch {
+      toast('Could not copy student names', 'error');
+    }
+  };
+
   const toggleSelect = (sid: string) => {
     setSelected((prev) => { const n = new Set(prev); if (n.has(sid)) n.delete(sid); else n.add(sid); return n; });
   };
@@ -268,6 +286,7 @@ export function AssignmentDetail() {
   const isFee = isFeeAssignment(assignment);
   const statusDone = isFee ? 'Paid' : 'Submitted';
   const statusNotDone = isFee ? 'Not Paid' : 'Not Submitted';
+  const bulkTargetCount = selected.size > 0 ? students.filter((student) => selected.has(student.id)).length : students.length;
   const filtered = sortAssignmentStudents(students.filter((s) => {
     const q = search.toLowerCase();
     return s.name.toLowerCase().includes(q) || s.rollNumber.includes(q);
@@ -300,8 +319,10 @@ export function AssignmentDetail() {
           <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">{submittedCount}</span>
           <span className="text-sm text-gray-500 dark:text-gray-400">/ {students.length} {isFee ? 'paid' : 'submitted'}</span>
         </div>
-        <button onClick={() => markAll(true)} className="btn-secondary"><CheckCheck className="w-4 h-4" /> {selected.size > 0 ? `Mark Selected ${statusDone}` : `Mark All ${statusDone}`}</button>
-        <button onClick={() => markAll(false)} className="btn-secondary"><X className="w-4 h-4" /> {selected.size > 0 ? `Unmark Selected` : 'Unmark All'}</button>
+        <button onClick={() => setBulkAction(true)} className="btn-secondary"><CheckCheck className="w-4 h-4" /> {selected.size > 0 ? `Mark Selected ${statusDone}` : `Mark All ${statusDone}`}</button>
+        <button onClick={() => setBulkAction(false)} className="btn-secondary"><X className="w-4 h-4" /> {selected.size > 0 ? `Unmark Selected` : 'Unmark All'}</button>
+        {isFee && <button onClick={() => void copyNamesByPaymentStatus(true)} className="btn-secondary"><ClipboardCopy className="w-4 h-4" /> Copy Paid Names</button>}
+        {isFee && <button onClick={() => void copyNamesByPaymentStatus(false)} className="btn-secondary"><ClipboardCopy className="w-4 h-4" /> Copy Not Paid Names</button>}
       </div>
 
       {students.length > 0 && (
@@ -357,6 +378,17 @@ export function AssignmentDetail() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={bulkAction !== null}
+        onClose={() => setBulkAction(null)}
+        onConfirm={() => { if (bulkAction !== null) void markAll(bulkAction); }}
+        title={bulkAction ? `Mark ${selected.size > 0 ? 'Selected' : 'All'} ${statusDone}?` : `Unmark ${selected.size > 0 ? 'Selected' : 'All'}?`}
+        message={bulkAction
+          ? `This will mark ${bulkTargetCount} student${bulkTargetCount === 1 ? '' : 's'} as ${isFee ? 'paid' : 'submitted'}.`
+          : `This will mark ${bulkTargetCount} student${bulkTargetCount === 1 ? '' : 's'} as ${isFee ? 'not paid' : 'not submitted'}.`}
+        confirmLabel={bulkAction ? `Mark ${statusDone}` : 'Unmark'}
+      />
     </div>
   );
 }
