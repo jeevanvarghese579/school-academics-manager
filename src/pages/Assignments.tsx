@@ -258,18 +258,22 @@ export function AssignmentDetail() {
     } catch (err: any) { toast(err.message || 'Failed', 'error'); }
   };
 
-  const copyNamesByPaymentStatus = async (paid: boolean) => {
+  const copyNamesByStatus = async (completed: boolean) => {
+    const feeRecord = assignment ? isFeeAssignment(assignment) : false;
+    const statusLabel = completed
+      ? (feeRecord ? 'paid' : 'submitted')
+      : (feeRecord ? 'not paid' : 'not submitted');
     const names = students
-      .filter((student) => (statuses.get(student.id) ?? false) === paid)
+      .filter((student) => (statuses.get(student.id) ?? false) === completed)
       .map((student) => student.name.trim())
       .filter(Boolean);
     if (names.length === 0) {
-      toast(`No ${paid ? 'paid' : 'not paid'} students to copy`, 'info');
+      toast(`No ${statusLabel} students to copy`, 'info');
       return;
     }
     try {
       await navigator.clipboard.writeText(names.join('\n'));
-      toast(`Copied ${names.length} ${paid ? 'paid' : 'not paid'} student name${names.length === 1 ? '' : 's'}`, 'success');
+      toast(`Copied ${names.length} ${statusLabel} student name${names.length === 1 ? '' : 's'}`, 'success');
     } catch {
       toast('Could not copy student names', 'error');
     }
@@ -321,8 +325,8 @@ export function AssignmentDetail() {
         </div>
         <button onClick={() => setBulkAction(true)} className="btn-secondary"><CheckCheck className="w-4 h-4" /> {selected.size > 0 ? `Mark Selected ${statusDone}` : `Mark All ${statusDone}`}</button>
         <button onClick={() => setBulkAction(false)} className="btn-secondary"><X className="w-4 h-4" /> {selected.size > 0 ? `Unmark Selected` : 'Unmark All'}</button>
-        {isFee && <button onClick={() => void copyNamesByPaymentStatus(true)} className="btn-secondary"><ClipboardCopy className="w-4 h-4" /> Copy Paid Names</button>}
-        {isFee && <button onClick={() => void copyNamesByPaymentStatus(false)} className="btn-secondary"><ClipboardCopy className="w-4 h-4" /> Copy Not Paid Names</button>}
+        <button onClick={() => void copyNamesByStatus(true)} className="btn-secondary"><ClipboardCopy className="w-4 h-4" /> Copy {statusDone} Names</button>
+        <button onClick={() => void copyNamesByStatus(false)} className="btn-secondary"><ClipboardCopy className="w-4 h-4" /> Copy {statusNotDone} Names</button>
       </div>
 
       {students.length > 0 && (
