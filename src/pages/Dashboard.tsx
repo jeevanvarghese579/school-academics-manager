@@ -4,6 +4,7 @@ import { GraduationCap, Users, ClipboardCheck, ClipboardList, Calendar, Trending
 import { useApp } from '@/context/AppContext';
 import type { ClassRoom, Exam, Assignment, Student } from '@/types';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { isFeeAssignment } from '@/utils/assignments';
 
 interface DashboardData {
   classes: ClassRoom[];
@@ -85,7 +86,7 @@ export function Dashboard() {
     { label: 'Classes', value: data.classes.length, icon: GraduationCap, color: 'primary', to: '/classes' },
     { label: 'Students', value: data.students.length, icon: Users, color: 'secondary', to: '/students' },
     { label: 'Exams', value: data.exams.length, icon: ClipboardCheck, color: 'accent', to: '/exams' },
-    { label: 'Assignments', value: data.assignments.length, icon: ClipboardList, color: 'success', to: '/assignments' },
+    { label: 'Assignments / Fees', value: data.assignments.length, icon: ClipboardList, color: 'success', to: '/assignments' },
   ];
 
   const colorMap: Record<string, string> = {
@@ -196,7 +197,7 @@ export function Dashboard() {
         <div className="card p-5">
           <div className="flex items-center gap-2 mb-4">
             <ClipboardList className="w-5 h-5 text-accent-600 dark:text-accent-400" />
-            <h2 className="font-semibold text-gray-900 dark:text-white">Active Assignments</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white">Active Assignments / Fees</h2>
           </div>
           <div className="space-y-2">
             {pendingAssignments.map((a) => {
@@ -209,7 +210,7 @@ export function Dashboard() {
                 >
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-white">{a.title}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{cls?.name} {cls?.division}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{cls?.name} {cls?.division} · {isFeeAssignment(a) ? 'Fee' : 'Assignment'}</p>
                   </div>
                   <span className="text-xs text-gray-400 dark:text-gray-500">{a.dueDate || 'No due date'}</span>
                 </Link>

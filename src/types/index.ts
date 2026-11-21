@@ -78,6 +78,8 @@ export interface Assignment extends BaseEntity {
   subject?: string;
   dueDate: string;
   description?: string;
+  /** Missing on older records and treated as false for backward compatibility. */
+  isFee?: boolean;
 }
 
 export interface AssignmentStatus extends BaseEntity {

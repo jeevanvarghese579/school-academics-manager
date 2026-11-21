@@ -28,6 +28,7 @@ import { classReportExamSchema, combinedAnalysisDate } from "@/utils/reportColum
 import { matchesStudentSearch, normalExamHeader } from "@/utils/reportPresentation";
 import { academicResultTone, normalExamMarkTone, plusOneTEPercentageTone } from "@/utils/reportMarkStyle";
 import { academicResultSortValue, formatAcademicResult, type AcademicResultMode } from "@/utils/reportResultPresentation";
+import { isFeeAssignment } from "@/utils/assignments";
 
 type Direction = "asc" | "desc";
 
@@ -203,6 +204,10 @@ function ClassReport({
   const [printOrientation, setPrintOrientation] = useState<"portrait" | "landscape">("portrait");
   const config = settings ?? DEFAULT_SETTINGS;
   const dec = settings?.decimalPlaces ?? 2;
+  const assignmentItems = useMemo(() => assignments.filter((item) => !isFeeAssignment(item)), [assignments]);
+  const feeItems = useMemo(() => assignments.filter(isFeeAssignment), [assignments]);
+  const assignmentIds = useMemo(() => new Set(assignmentItems.map((item) => item.id)), [assignmentItems]);
+  const feeIds = useMemo(() => new Set(feeItems.map((item) => item.id)), [feeItems]);
   useEffect(() => {
     updateSearch({
       sort: sort === "roll" ? null : sort,
@@ -260,7 +265,10 @@ function ClassReport({
             ]),
           ),
           submitted: statuses.filter(
-            (status) => status.studentId === student.id && status.submitted,
+            (status) => status.studentId === student.id && status.submitted && assignmentIds.has(status.assignmentId),
+          ).length,
+          feesPaid: statuses.filter(
+            (status) => status.studentId === student.id && status.submitted && feeIds.has(status.assignmentId),
           ).length,
           grace: grace
             .filter((entry) => entry.studentId === student.id)
@@ -276,16 +284,22 @@ function ClassReport({
       marks,
       combined,
       statuses,
+      assignmentIds,
+      feeIds,
       grace,
     ],
   );
   const value = (row: (typeof rows)[number]) =>
     sort === "roll"
       ? row.student.rollNumber
+      : sort === "name"
+        ? row.student.name
       : sort === "plus"
         ? academicResultSortValue(resultMode, row.po?.teMarks ?? null, row.po?.tePercentage ?? null)
         : sort === "assign"
           ? row.submitted
+          : sort === "fees"
+            ? row.feesPaid
           : sort === "grace"
             ? row.grace
             : sort.startsWith("combined:")
@@ -353,6 +367,7 @@ function ClassReport({
       }
     });
     if (visible("assign")) { headings.push("Assignments"); fields.push((row) => row.submitted); }
+    if (visible("fees")) { headings.push("Fees Paid"); fields.push((row) => row.feesPaid); }
     if (visible("grace")) { headings.push("Grace"); fields.push((row) => row.grace || null); }
     const worksheet = XLSX.utils.aoa_to_sheet([headings, ...shown.map((row) => fields.map((field) => field(row)))]);
     headings.forEach((_, column) => {
@@ -382,7 +397,8 @@ function ClassReport({
     const header = normalExamHeader(exam);
     return <th key={exam.id} className="px-3 py-2 text-left text-xs uppercase cursor-pointer" onClick={() => sort === exam.id ? setDir(dir === "asc" ? "desc" : "asc") : (setSort(exam.id), setDir("asc"))}><div>{header.name}</div><div className="mt-0.5 normal-case text-[11px] font-normal text-gray-500">{header.maximum}</div></th>;
   };
-  const assignmentColumn = () => <th className="px-3 py-2 text-left text-xs uppercase cursor-pointer" onClick={() => sort === "assign" ? setDir(dir === "asc" ? "desc" : "asc") : (setSort("assign"), setDir("asc"))}><div>Assignments</div><div className="mt-0.5 normal-case text-[11px] font-normal text-gray-500">Total {assignments.length}</div></th>;
+  const assignmentColumn = () => <th className="px-3 py-2 text-left text-xs uppercase cursor-pointer" onClick={() => sort === "assign" ? setDir(dir === "asc" ? "desc" : "asc") : (setSort("assign"), setDir("asc"))}><div>Assignments</div><div className="mt-0.5 normal-case text-[11px] font-normal text-gray-500">Total {assignmentItems.length}</div></th>;
+  const feesColumn = () => <th className="px-3 py-2 text-left text-xs uppercase cursor-pointer" onClick={() => sort === "fees" ? setDir(dir === "asc" ? "desc" : "asc") : (setSort("fees"), setDir("asc"))}><div>Fees</div><div className="mt-0.5 normal-case text-[11px] font-normal text-gray-500">Total {feeItems.length}</div></th>;
   const markClass = (mark: number | null, exam: Exam) => ({ failed: "bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-300", aplus: "bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-300", normal: "", neutral: "text-gray-400" }[normalExamMarkTone(mark, exam.maxMarks, config)]);
   const metric = (
     n: number | null | undefined,
@@ -410,6 +426,7 @@ function ClassReport({
       result.kind === "exam" ? result.exam.name : result.analysis.name,
     ] as [string, string]),
     ["assign", "Assignment status"],
+    ["fees", "Fees paid"],
     ["grace", "Grace marks"] as [string, string],
   ];
   type ReportRow = (typeof rows)[number];
@@ -492,8 +509,13 @@ function ClassReport({
     })),
     {
       key: "assign",
-      label: `Assignments (Total ${assignments.length})`,
+      label: `Assignments (Total ${assignmentItems.length})`,
       value: (row: ReportRow) => row.submitted,
+    },
+    {
+      key: "fees",
+      label: `Fees paid (Total ${feeItems.length})`,
+      value: (row: ReportRow) => row.feesPaid,
     },
     {
       key: "grace",
@@ -620,6 +642,7 @@ function ClassReport({
                       : column(result.key, result.analysis.name),
                   )}
                 {visible("assign") && assignmentColumn()}
+                {visible("fees") && feesColumn()}
                 {visible("grace") && column("grace", "Grace")}
               </tr>
             </thead>
@@ -684,6 +707,7 @@ function ClassReport({
                   {visible("assign") && (
                     <td>{row.submitted}</td>
                   )}
+                  {visible("fees") && <td>{row.feesPaid}</td>}
                   {visible("grace") && <td>{row.grace || "—"}</td>}
                 </tr>
               ))}

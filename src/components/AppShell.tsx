@@ -23,7 +23,7 @@ const navItems = [
   { to: "/classes", label: "Classes", icon: GraduationCap },
   { to: "/exams", label: "Exams", icon: ClipboardCheck },
   { to: "/combined", label: "Combined Analysis", icon: Calculator },
-  { to: "/assignments", label: "Assignments", icon: ClipboardCheck },
+  { to: "/assignments", label: "Assignments / Fees", icon: ClipboardCheck },
   { to: "/grace-marks", label: "Grace Marks", icon: Award },
   { to: "/reports", label: "Reports", icon: FileBarChart },
   { to: "/import-export", label: "Import / Export", icon: Database },

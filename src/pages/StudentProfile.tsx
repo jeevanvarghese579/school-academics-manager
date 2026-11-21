@@ -37,6 +37,7 @@ import {
   formatPercent,
 } from "@/utils/calculations";
 import { academicResultTone } from "@/utils/reportMarkStyle";
+import { isFeeAssignment } from "@/utils/assignments";
 import {
   adjacentStudentIds,
   isExamIncludedInPerformance,
@@ -201,8 +202,11 @@ export function StudentProfile() {
         status.assignmentId === assignmentId && status.studentId === student.id,
     )?.submitted ?? false;
   const submitted = assignments.filter((assignment) =>
-    statusFor(assignment.id),
+    !isFeeAssignment(assignment) && statusFor(assignment.id),
   ).length;
+  const assignmentCount = assignments.filter((assignment) => !isFeeAssignment(assignment)).length;
+  const paidFees = assignments.filter((assignment) => isFeeAssignment(assignment) && statusFor(assignment.id)).length;
+  const feeCount = assignments.filter(isFeeAssignment).length;
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -539,21 +543,22 @@ export function StudentProfile() {
       </section>
       <section className="card overflow-hidden">
         <div className="p-5">
-          <h2 className="font-semibold">Assignments</h2>
+          <h2 className="font-semibold">Assignments / Fees</h2>
           <p className="text-sm text-gray-500">
-            {submitted}/{assignments.length} submitted
+            {submitted}/{assignmentCount} assignments submitted · {paidFees}/{feeCount} fees paid
           </p>
         </div>
         {assignments.length === 0 ? (
           <p className="px-5 pb-5 text-sm text-gray-500">
-            No assignments for this class.
+            No assignments or fees for this class.
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr>
-                  <th>Assignment</th>
+                  <th>Assignment / Fee</th>
+                  <th>Type</th>
                   <th>Due date</th>
                   <th>Status</th>
                 </tr>
@@ -562,14 +567,15 @@ export function StudentProfile() {
                 {assignments.map((assignment) => (
                   <tr key={assignment.id} className="border-t">
                     <td>{assignment.title}</td>
+                    <td>{isFeeAssignment(assignment) ? "Fee" : "Assignment"}</td>
                     <td>{assignment.dueDate || "—"}</td>
                     <td>
                       {statusFor(assignment.id) ? (
                         <span className="inline-flex gap-1 items-center text-success-700">
-                          <CheckCircle2 className="w-4 h-4" /> Submitted
+                          <CheckCircle2 className="w-4 h-4" /> {isFeeAssignment(assignment) ? "Paid" : "Submitted"}
                         </span>
                       ) : (
-                        "Not submitted"
+                        isFeeAssignment(assignment) ? "Not paid" : "Not submitted"
                       )}
                     </td>
                   </tr>
