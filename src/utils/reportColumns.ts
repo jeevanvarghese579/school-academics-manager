@@ -1,5 +1,15 @@
 import type { CombinedAnalysis, Exam } from "@/types";
 
+export function combinedAnalysisMaxMarks(
+  analysis: Pick<CombinedAnalysis, "examIds">,
+  exams: Exam[],
+) {
+  return analysis.examIds.reduce(
+    (total, examId) => total + (exams.find((exam) => exam.id === examId)?.maxMarks ?? 0),
+    0,
+  );
+}
+
 export function combinedAnalysisDate(
   analysis: Pick<CombinedAnalysis, "examIds" | "date">,
   exams: Exam[],

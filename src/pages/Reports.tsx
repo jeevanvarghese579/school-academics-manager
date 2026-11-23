@@ -24,7 +24,7 @@ import {
   formatMark,
   formatPercent,
 } from "@/utils/calculations";
-import { classReportExamSchema, combinedAnalysisDate } from "@/utils/reportColumns";
+import { classReportExamSchema, combinedAnalysisDate, combinedAnalysisMaxMarks } from "@/utils/reportColumns";
 import { matchesStudentSearch, normalExamHeader } from "@/utils/reportPresentation";
 import { academicResultTone, normalExamMarkTone, plusOneTEPercentageTone } from "@/utils/reportMarkStyle";
 import { academicResultSortValue, formatAcademicResult, type AcademicResultMode } from "@/utils/reportResultPresentation";
@@ -397,6 +397,11 @@ function ClassReport({
     const header = normalExamHeader(exam);
     return <th key={exam.id} className="px-3 py-2 text-left text-xs uppercase cursor-pointer" onClick={() => sort === exam.id ? setDir(dir === "asc" ? "desc" : "asc") : (setSort(exam.id), setDir("asc"))}><div>{header.name}</div><div className="mt-0.5 normal-case text-[11px] font-normal text-gray-500">{header.maximum}</div></th>;
   };
+  const combinedColumn = (analysis: CombinedAnalysis) => {
+    const key = `combined:${analysis.id}`;
+    const maximum = combinedAnalysisMaxMarks(analysis, regular);
+    return <th key={key} className="px-3 py-2 text-left text-xs uppercase cursor-pointer" onClick={() => sort === key ? setDir(dir === "asc" ? "desc" : "asc") : (setSort(key), setDir("asc"))}><div>{analysis.name}</div><div className="mt-0.5 normal-case text-[11px] font-normal text-gray-500">Max {formatMark(maximum)}</div></th>;
+  };
   const assignmentColumn = () => <th className="px-3 py-2 text-left text-xs uppercase cursor-pointer" onClick={() => sort === "assign" ? setDir(dir === "asc" ? "desc" : "asc") : (setSort("assign"), setDir("asc"))}><div>Assignments</div><div className="mt-0.5 normal-case text-[11px] font-normal text-gray-500">Total {assignmentItems.length}</div></th>;
   const feesColumn = () => <th className="px-3 py-2 text-left text-xs uppercase cursor-pointer" onClick={() => sort === "fees" ? setDir(dir === "asc" ? "desc" : "asc") : (setSort("fees"), setDir("asc"))}><div>Fees</div><div className="mt-0.5 normal-case text-[11px] font-normal text-gray-500">Total {feeItems.length}</div></th>;
   const markClass = (mark: number | null, exam: Exam) => ({ failed: "bg-error-50 dark:bg-error-900/20 text-error-700 dark:text-error-300", aplus: "bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-300", normal: "", neutral: "text-gray-400" }[normalExamMarkTone(mark, exam.maxMarks, config)]);
@@ -639,7 +644,7 @@ function ClassReport({
                   .map((result) =>
                     result.kind === "exam"
                       ? examColumn(result.exam)
-                      : column(result.key, result.analysis.name),
+                      : combinedColumn(result.analysis),
                   )}
                 {visible("assign") && assignmentColumn()}
                 {visible("fees") && feesColumn()}

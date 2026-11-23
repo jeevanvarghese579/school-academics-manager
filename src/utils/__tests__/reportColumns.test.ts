@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Exam } from '@/types';
-import { classReportExamSchema, combinedAnalysisDate } from '@/utils/reportColumns';
+import { classReportExamSchema, combinedAnalysisDate, combinedAnalysisMaxMarks } from '@/utils/reportColumns';
 
 const exam = (id: string, classId: string, type: Exam['type'], date = ''): Exam => ({ id, classId, type, name: id, date, maxMarks: 100, createdAt: '', updatedAt: '' });
 const exams = [exam('plus-one', 'A', 'plusOne'), exam('a', 'A', 'regular'), exam('b', 'B', 'regular'), exam('c', 'B', 'regular')];
@@ -33,5 +33,17 @@ describe('combinedAnalysisDate', () => {
 
   it('falls back to the stored date when referenced exams are unavailable', () => {
     expect(combinedAnalysisDate({ examIds: ['missing'], date: '2026-09-02' }, [])).toBe('2026-09-02');
+  });
+});
+
+describe('combinedAnalysisMaxMarks', () => {
+  it('returns the sum of the referenced exam maximum marks', () => {
+    const referencedExams = [
+      { ...exam('first', 'A', 'regular'), maxMarks: 10 },
+      { ...exam('second', 'A', 'regular'), maxMarks: 5 },
+      { ...exam('third', 'A', 'regular'), maxMarks: 15 },
+    ];
+
+    expect(combinedAnalysisMaxMarks({ examIds: ['first', 'second', 'third'] }, referencedExams)).toBe(30);
   });
 });
