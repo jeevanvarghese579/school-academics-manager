@@ -28,10 +28,13 @@ export function calcPercentage(obtained: number | null, maxMarks: number): numbe
 export function calcCombinedPercentage(
   entries: { obtained: number | null; maxMarks: number }[],
 ): { combinedObtained: number; combinedMax: number; combinedPercentage: number | null } {
-  const validEntries = entries.filter((e) => e.obtained !== null && e.maxMarks > 0);
-  const combinedObtained = validEntries.reduce((sum, e) => sum + (e.obtained as number), 0);
-  const combinedMax = validEntries.reduce((sum, e) => sum + e.maxMarks, 0);
-  if (combinedMax <= 0) return { combinedObtained: 0, combinedMax: 0, combinedPercentage: null };
+  const validExams = entries.filter((e) => e.maxMarks > 0);
+  const enteredExams = validExams.filter((e) => e.obtained !== null);
+  const combinedObtained = enteredExams.reduce((sum, e) => sum + (e.obtained as number), 0);
+  const combinedMax = validExams.reduce((sum, e) => sum + e.maxMarks, 0);
+  if (enteredExams.length === 0 || combinedMax <= 0) {
+    return { combinedObtained: 0, combinedMax, combinedPercentage: null };
+  }
   return {
     combinedObtained,
     combinedMax,

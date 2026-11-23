@@ -64,14 +64,14 @@ describe('calcCombinedPercentage', () => {
     expect(roundTo(result.combinedPercentage!, 2)).toBe(75);
   });
 
-  it('skips null entries', () => {
+  it('uses the sum of all selected exam maximums when a mark is missing', () => {
     const result = calcCombinedPercentage([
       { obtained: 50, maxMarks: 100 },
       { obtained: null, maxMarks: 50 },
     ]);
     expect(result.combinedObtained).toBe(50);
-    expect(result.combinedMax).toBe(100);
-    expect(result.combinedPercentage).toBe(50);
+    expect(result.combinedMax).toBe(150);
+    expect(roundTo(result.combinedPercentage!, 2)).toBe(33.33);
   });
 
   it('returns null when all entries are null', () => {
@@ -79,6 +79,8 @@ describe('calcCombinedPercentage', () => {
       { obtained: null, maxMarks: 100 },
       { obtained: null, maxMarks: 50 },
     ]);
+    expect(result.combinedObtained).toBe(0);
+    expect(result.combinedMax).toBe(150);
     expect(result.combinedPercentage).toBeNull();
   });
 });
