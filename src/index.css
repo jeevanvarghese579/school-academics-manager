@@ -99,6 +99,9 @@
     overflow: visible !important;
     width: 100% !important;
   }
+  .class-report-scroll {
+    max-height: none !important;
+  }
   .class-report-table {
     border: 0 !important;
   }

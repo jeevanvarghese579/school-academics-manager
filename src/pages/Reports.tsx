@@ -623,10 +623,10 @@ function ClassReport({
         ))}
       </div>
       <div className="card overflow-hidden class-report-table">
-        <div className="overflow-x-auto class-report-scroll">
+        <div className="max-h-[70vh] overflow-auto class-report-scroll">
           <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50">
+            <thead className="sticky top-0 z-10 shadow-sm">
+              <tr className="bg-gray-50 dark:bg-gray-900">
                 {column("roll", "Roll")}
                 {column("name", "Student")}
                 {hasPlusOne &&
